@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #define pin_input1 A2 // input signal from PD1
 #define dpin_in 2
 
@@ -35,3 +36,42 @@ void triggerISR() {
   // Updates the trigger state immediately when the pin changes [cite: 2, 14]
   trigger_active = digitalRead(dpin_in);
 }
+=======
+// Raw signal with one laser and trigger system
+
+#define pin_input1 A2 
+#define dpin_in 3     // Updated to match UneditedCode 
+#define dpin_out 6    // Added output for function generator 
+
+void setup() {
+  Serial.begin(250000); // Updated to match UneditedCode baud rate 
+  
+  analogWriteResolution(12);
+  analogReadResolution(12);
+  
+  pinMode(dpin_in, INPUT);  
+  pinMode(dpin_out, OUTPUT); // 
+  digitalWrite(dpin_out, LOW); // Initialize trigger as LOW 
+}
+
+void loop() {
+  // Read the lock status (dpin_in) 
+  bool lock = digitalRead(dpin_in);
+
+  if (lock) {
+    // 1. Signal the start of the sweep 
+    digitalWrite(dpin_out, HIGH);
+    
+    // 2. Perform the analog reading
+    int raw_signal = analogRead(pin_input1);
+    Serial.println(raw_signal);
+
+    // 3. Signal the end of the sweep cycle 
+    digitalWrite(dpin_out, LOW);
+    
+  } else {
+    // Output matches the "disengaged" state of the unedited code 
+    Serial.println("Lock disengaged");
+  }
+}
+>>>>>>> 2b0e327 (Home computer update)
