@@ -15,7 +15,7 @@
 #define alpha2_ref 0.50
 
 // Global Variables
-volatile bool trigger_active = false; // Shared between ISR and main loop [cite: 45]
+// Trigger state will be read via polling from `dpin_in` in the main loop
 int signalarray[arraysize], dsignalarray[arraysize];
 unsigned long t01, t02, t2, start_time, end_time, time_peak, tstartsweep, timenow; // [cite: 46]
 int counter, len, Range;
@@ -34,9 +34,8 @@ void setup() {
   analogWriteResolution(12);
   
   // --- EXTERNAL TRIGGER SETUP EXACTLY AS IN COMPLETE.INO ---
-  pinMode(dpin_in, INPUT); // [cite: 50]
-  attachInterrupt(digitalPinToInterrupt(dpin_in), triggerISR, CHANGE); // [cite: 50]
-  trigger_active = digitalRead(dpin_in); // [cite: 51]
+  // pinMode(dpin_in, INPUT); // [cite: 50]
+  // Poll `dpin_in` in `loop()` instead of using an ISR
   
   pinMode(dpin_out, OUTPUT); // [cite: 51]
   digitalWrite(dpin_out, LOW); // [cite: 51]
@@ -45,12 +44,18 @@ void setup() {
 }
 
 void loop() {
-  // Use the interrupt-updated variable [cite: 52]
-  bool lock = trigger_active;
+  // Read the trigger pin via polling (two-pin system: dpin_in + dpin_out)
+  // bool lock = digitalRead(dpin_in);
+  bool lock = true; // Trigger input disabled
 
   if (lock) {
     start_time = micros();
-    digitalWrite(dpin_out, HIGH); // Manual trigger start [cite: 53]
+    // Manual 50ms trigger pulse
+    digitalWrite(dpin_out, HIGH);
+    delay(50);
+    digitalWrite(dpin_out, LOW);
+    delay(50);
+    // digitalWrite(dpin_out, HIGH); // Manual trigger start [cite: 53] - ORIGINAL COMMENTED OUT
     trigger = HIGH; 
     bool indicator2 = LOW;
     tstartsweep = millis();
@@ -123,10 +128,7 @@ void loop() {
   }
 }
 
-// --- ISR EXACTLY AS IN COMPLETE.INO ---
-void triggerISR() {
-  trigger_active = digitalRead(dpin_in); // 
-}
+// ISR removed: using polling on `dpin_in` for trigger state
 
 unsigned long peakfinder(int number, unsigned long duration) {
   if (number < 13) return 0;

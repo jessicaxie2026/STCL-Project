@@ -16,25 +16,27 @@ int signalarray[arraysize], dsignalarray[arraysize];
 bool flag = HIGH;
 double error2, totalT, alpha2;
 
-// Volatile variable shared between ISR and main loop as used in TwoTriggerRead.ino
-volatile bool trigger_active = false;
+// Trigger state will be polled from `dpin_in`
 
 void setup() {
   Serial.begin(115200); 
   analogReadResolution(12); 
   
-  // Setup trigger pin and interrupt logic exactly as in TwoTriggerRead.ino
-  pinMode(dpin_in, INPUT);
-  attachInterrupt(digitalPinToInterrupt(dpin_in), triggerISR, CHANGE);
-  
-  // Initial check of the trigger state
-  trigger_active = digitalRead(dpin_in);
+  // Setup trigger pin for polling
+  // pinMode(dpin_in, INPUT);
 }
 
 void loop() {
-  // Use the volatile trigger_active flag updated by the ISR
-  if (trigger_active) { 
-    start_time = micros(); 
+  // Poll the trigger pin instead of using an ISR
+  // if (digitalRead(dpin_in) == HIGH) {
+  if (true) { // Trigger input disabled
+    // Manual 50ms trigger pulse
+    digitalWrite(dpin_out, HIGH);
+    delay(50);
+    digitalWrite(dpin_out, LOW);
+    delay(50);
+    // Manual trigger start - ORIGINAL COMMENTED OUT
+    start_time = micros();
     int counter = 0;
     bool indicator2 = LOW;
     bool sweep_active = HIGH;
@@ -99,15 +101,11 @@ void loop() {
       Serial.println("Error: Failed to capture all 3 peaks.");
     }
 
-    // Wait for trigger_active to become false (via ISR) before next cycle
-    while(trigger_active); 
+    // Wait for the external trigger pin to return to LOW before next cycle
+    // while(digitalRead(dpin_in) == HIGH); - ORIGINAL COMMENTED OUT
   }
 }
 
-// ISR exactly as implemented in TwoTriggerRead.ino
-void triggerISR() {
-  trigger_active = digitalRead(dpin_in);
-}
 
 // Savitzky-Golay Filter for peak center detection
 unsigned long peakfinder(int number, unsigned long duration) { 
