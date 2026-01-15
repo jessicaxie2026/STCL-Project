@@ -8,24 +8,18 @@ void setup() {
   Serial.begin(250000);
   analogWriteResolution(12);
   analogReadResolution(12);
-  // pinMode(dpin_in, INPUT);
+  pinMode(dpin_in, INPUT);
   pinMode(dpin_out, OUTPUT);
   digitalWrite(dpin_out, LOW);
 }
 
 void loop() {
-  // bool lock = digitalRead(dpin_in);
-  // if (lock) {
-  if (true) { // Trigger input disabled
-    // Manual 50ms trigger pulse
+  bool lock = digitalRead(dpin_in);
+  if (lock) {
     digitalWrite(dpin_out, HIGH);
-    delay(50);
-    digitalWrite(dpin_out, LOW);
-    delay(50);
-    // digitalWrite(dpin_out, HIGH); - ORIGINAL COMMENTED OUT
     int raw_signal = analogRead(pin_input1);
     Serial.println(raw_signal);
-    // digitalWrite(dpin_out, LOW); - ORIGINAL COMMENTED OUT
+    digitalWrite(dpin_out, LOW); //Change the trigger state back to LOW
   } else {
     Serial.println("Lock disengaged");
   }

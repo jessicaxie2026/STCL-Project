@@ -18,24 +18,18 @@ void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
 
-  // pinMode(dpin_in, INPUT);
+  pinMode(dpin_in, INPUT);
   pinMode(dpin_out, OUTPUT);
   digitalWrite(dpin_out, LOW);
 }
 
 void loop() {
   // Check if the lock/trigger pin is HIGH to start the cycle
-  // bool lock = digitalRead(dpin_in);
-  bool lock = true; // Trigger input disabled
+  bool lock = digitalRead(dpin_in);
 
   if (lock) {
     start_time = micros();
-    // Manual 50ms trigger pulse
     digitalWrite(dpin_out, HIGH);
-    delay(50);
-    digitalWrite(dpin_out, LOW);
-    delay(50);
-    // digitalWrite(dpin_out, HIGH); // Signal start of the sweep - ORIGINAL COMMENTED OUT
     trigger = HIGH;
     tstartsweep = millis();
     bool peak_captured = false;
@@ -76,7 +70,7 @@ void loop() {
       Serial.println("Error: No peak detected within timeout.");
     }
 
-    // digitalWrite(dpin_out, LOW); // Reset trigger state for next cycle - ORIGINAL COMMENTED OUT
+    digitalWrite(dpin_out, LOW); //Change the trigger state back to LOW
   } else {
     Serial.println("Lock disengaged");
   }

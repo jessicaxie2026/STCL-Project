@@ -13,21 +13,15 @@ void setup() {
   Serial.begin(115200);
   analogWriteResolution(12);
   analogReadResolution(12);
-  // pinMode(dpin_in, INPUT);
+  pinMode(dpin_in, INPUT);
   pinMode(dpin_out, OUTPUT);
   digitalWrite(dpin_out, LOW);
 }
 
 void loop() {
-  // if (digitalRead(dpin_in) == HIGH) {
-  if (true) { // Trigger input disabled
-    // Manual 50ms trigger pulse
-    digitalWrite(dpin_out, HIGH);
-    delay(50);
-    digitalWrite(dpin_out, LOW);
-    delay(50);
-    // digitalWrite(dpin_out, HIGH); // Start the sweep trigger - ORIGINAL COMMENTED OUT
+  if (digitalRead(dpin_in) == HIGH) {
     unsigned long start_time = micros();
+    digitalWrite(dpin_out, HIGH);
     int value1 = analogRead(pin_input1);
     if (value1 > High_threshold1) {
       unsigned long time_peak = micros();
@@ -42,7 +36,7 @@ void loop() {
       unsigned long peak_offset = peakfinder(count, end_time - time_peak);
       Serial.println((double)(time_peak - start_time + peak_offset) / 1000000.0, 6);
     }
-    // digitalWrite(dpin_out, LOW); - ORIGINAL COMMENTED OUT
+    digitalWrite(dpin_out, LOW); //Change the trigger state back to LOW
   }
 }
 

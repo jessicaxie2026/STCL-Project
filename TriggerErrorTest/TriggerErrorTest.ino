@@ -23,19 +23,13 @@ void setup() {
   analogReadResolution(12); 
   
   // Setup trigger pin for polling
-  // pinMode(dpin_in, INPUT);
+  pinMode(dpin_in, INPUT);
 }
 
 void loop() {
   // Poll the trigger pin instead of using an ISR
-  // if (digitalRead(dpin_in) == HIGH) {
-  if (true) { // Trigger input disabled
-    // Manual 50ms trigger pulse
+  if (digitalRead(dpin_in) == HIGH) {
     digitalWrite(dpin_out, HIGH);
-    delay(50);
-    digitalWrite(dpin_out, LOW);
-    delay(50);
-    // Manual trigger start - ORIGINAL COMMENTED OUT
     start_time = micros();
     int counter = 0;
     bool indicator2 = LOW;
@@ -101,9 +95,9 @@ void loop() {
       Serial.println("Error: Failed to capture all 3 peaks.");
     }
 
+    digitalWrite(dpin_out, LOW); //Change the trigger state back to LOW
     // Wait for the external trigger pin to return to LOW before next cycle
-    // while(digitalRead(dpin_in) == HIGH); - ORIGINAL COMMENTED OUT
-  }
+    while(digitalRead(dpin_in) == HIGH);
 }
 
 

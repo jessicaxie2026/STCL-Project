@@ -13,20 +13,15 @@ void setup() {
   analogReadResolution(12);      
   
   // Setup trigger pin for polling
-  // pinMode(dpin_in, INPUT);
+  pinMode(dpin_in, INPUT);
   pinMode(dpin_out, OUTPUT);
   digitalWrite(dpin_out, LOW);
 }
 
 void loop() {
   // Poll the trigger pin (two-pin system: dpin_in)
-  // if (digitalRead(dpin_in)) {
-  if (true) { // Trigger input disabled
-    // Manual 50ms trigger pulse
+  if (digitalRead(dpin_in)) {
     digitalWrite(dpin_out, HIGH);
-    delay(50);
-    digitalWrite(dpin_out, LOW);
-    delay(50);
     
     // When trigger is High: output the signal from both lasers
     int value1 = analogRead(laserPin1);
@@ -34,6 +29,7 @@ void loop() {
 
     Serial.print(value1);
     Serial.println(value2);
+    digitalWrite(dpin_out, LOW); //Change the trigger state back to LOW
   } else {
     // When trigger is Low: output 0
     Serial.println(0);

@@ -23,7 +23,7 @@ bool trigger, flag = HIGH;//Flag is for detecting the position of the peak.
 bool indicator2 = LOW; //indicator is for indicating the presence of the 795 peak
 bool lock;
 
-//----------------------------------------------
+//---------------------------------------------R-
 //Define Servo Loop Variables for 795nm feedback
 int sign2 = -1; //define the sign of PID parameters. 1 is positive and -1 is negative.
 volatile float laser2_K_i = 1;

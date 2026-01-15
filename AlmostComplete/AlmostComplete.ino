@@ -33,9 +33,8 @@ void setup() {
   analogReadResolution(12);
   analogWriteResolution(12);
   
-  // --- EXTERNAL TRIGGER SETUP EXACTLY AS IN COMPLETE.INO ---
-  // pinMode(dpin_in, INPUT); // [cite: 50]
-  // Poll `dpin_in` in `loop()` instead of using an ISR
+  // --- EXTERNAL TRIGGER SETUP ---
+  pinMode(dpin_in, INPUT);
   
   pinMode(dpin_out, OUTPUT); // [cite: 51]
   digitalWrite(dpin_out, LOW); // [cite: 51]
@@ -45,17 +44,11 @@ void setup() {
 
 void loop() {
   // Read the trigger pin via polling (two-pin system: dpin_in + dpin_out)
-  // bool lock = digitalRead(dpin_in);
-  bool lock = true; // Trigger input disabled
+  bool lock = digitalRead(dpin_in);
 
   if (lock) {
     start_time = micros();
-    // Manual 50ms trigger pulse
     digitalWrite(dpin_out, HIGH);
-    delay(50);
-    digitalWrite(dpin_out, LOW);
-    delay(50);
-    // digitalWrite(dpin_out, HIGH); // Manual trigger start [cite: 53] - ORIGINAL COMMENTED OUT
     trigger = HIGH; 
     bool indicator2 = LOW;
     tstartsweep = millis();
