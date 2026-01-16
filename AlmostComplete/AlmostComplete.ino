@@ -18,6 +18,7 @@
 // Trigger state will be read via polling from `dpin_in` in the main loop
 int signalarray[arraysize], dsignalarray[arraysize];
 unsigned long t01, t02, t2, start_time, end_time, time_peak, tstartsweep, timenow; // [cite: 46]
+unsigned long period = 50; // Sweep period limit in ms
 int counter, len, Range;
 double error2, totalT;
 bool trigger, flag; // [cite: 48]
@@ -60,7 +61,7 @@ void loop() {
       timenow = millis(); // [cite: 54]
 
       // Trigger timeout logic [cite: 55]
-      if (timenow - tstartsweep > 50) { 
+      if (timenow - tstartsweep > period) { 
         trigger = LOW;
       }
       

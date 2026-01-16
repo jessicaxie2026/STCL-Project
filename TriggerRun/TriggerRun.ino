@@ -8,6 +8,7 @@
 #define dpin_out 6
 
 int signalarray[arraysize];
+unsigned long period = 50; // Sweep period limit in ms
 
 void setup() {
   Serial.begin(115200);
@@ -21,6 +22,7 @@ void setup() {
 void loop() {
   if (digitalRead(dpin_in) == HIGH) {
     unsigned long start_time = micros();
+    unsigned long tstartsweep = millis();
     digitalWrite(dpin_out, HIGH);
     int value1 = analogRead(pin_input1);
     if (value1 > High_threshold1) {
@@ -30,7 +32,7 @@ void loop() {
         if (count < arraysize) signalarray[count] = value1;
         value1 = analogRead(pin_input1);
         count++;
-      } while (value1 > Low_threshold1);
+      } while (value1 > Low_threshold1 && (millis() - tstartsweep) <= period);
       unsigned long end_time = micros();
       if (count > arraysize) count = arraysize;
       unsigned long peak_offset = peakfinder(count, end_time - time_peak);

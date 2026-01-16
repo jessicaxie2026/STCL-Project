@@ -12,6 +12,7 @@
 
 // --- Global Variables ---
 unsigned long t01, t02, t2, start_time, end_time, time_peak;
+unsigned long period = 50; // Sweep period limit in ms
 int signalarray[arraysize], dsignalarray[arraysize];
 bool flag = HIGH;
 double error2, totalT, alpha2;
@@ -41,7 +42,7 @@ void loop() {
       int value2 = analogRead(pin_input2); 
 
       // Timeout safety (50ms)
-      if (millis() - tstartsweep > 50) sweep_active = LOW; 
+      if (millis() - tstartsweep > period) sweep_active = LOW; 
 
       // Detect reference peaks on Channel 1
       if (value1 > High_threshold1) { 

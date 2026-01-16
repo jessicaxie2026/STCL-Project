@@ -1,4 +1,5 @@
 const int triggerPin = 2;
+unsigned long period = 50; // Sweep period limit in ms
 
 void setup() {
   Serial.begin(115200);
@@ -8,8 +9,11 @@ void setup() {
 
 void loop() {
   if (digitalRead(triggerPin) == HIGH) {
+    unsigned long tstartsweep = millis();
     digitalWrite(2, HIGH);
-    Serial.println("TRIGGER DETECTED!");
+    if ((millis() - tstartsweep) <= period) {
+      Serial.println("TRIGGER DETECTED!");
+    }
     while (digitalRead(triggerPin) == HIGH);
     digitalWrite(2, LOW); //Change the trigger state back to LOW
   } else {

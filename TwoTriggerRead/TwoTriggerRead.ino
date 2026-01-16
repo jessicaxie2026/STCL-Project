@@ -3,6 +3,7 @@ const int laserPin2 = A4;        // Second laser connected to A4
 const int dpin_in = 2;           // External trigger pin (from TriggerRun.ino)
 const int dpin_out = 6;          // Digital output for triggering function generator
 const int sampleInterval = 10000; // Microseconds between samples
+unsigned long period = 50; // Sweep period limit in ms
 
 // Trigger state will be polled from `dpin_in`
 
@@ -21,14 +22,17 @@ void setup() {
 void loop() {
   // Poll the trigger pin (two-pin system: dpin_in)
   if (digitalRead(dpin_in)) {
+    unsigned long tstartsweep = millis();
     digitalWrite(dpin_out, HIGH);
     
     // When trigger is High: output the signal from both lasers
-    int value1 = analogRead(laserPin1);
-    int value2 = analogRead(laserPin2);
+    if ((millis() - tstartsweep) <= period) {
+      int value1 = analogRead(laserPin1);
+      int value2 = analogRead(laserPin2);
 
-    Serial.print(value1);
-    Serial.println(value2);
+      Serial.print(value1);
+      Serial.println(value2);
+    }
     digitalWrite(dpin_out, LOW); //Change the trigger state back to LOW
   } else {
     // When trigger is Low: output 0
