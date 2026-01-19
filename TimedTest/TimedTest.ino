@@ -12,15 +12,15 @@ unsigned long t01, start_time, end_time, time_peak, tstartsweep;
 unsigned long period = 50; // Sweep period limit in ms
 int signalarray[arraysize], dsignalarray[arraysize];
 bool flag = HIGH; // Flag for detecting peak position
-bool trigger;     // Sweep control flag
+volatile bool trigger_active = false;
 
 void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
 
   pinMode(dpin_in, INPUT);
-  pinMode(dpin_out, OUTPUT);
-  digitalWrite(dpin_out, LOW);
+  pinMode(dpin_out, INPUT);
+  attachInterrupt(digitalPinToInterrupt(dpin_out), triggerISR, CHANGE);
 }
 
 void loop() {

@@ -19,7 +19,8 @@ int signalarray[arraysize], dsignalarray[arraysize] = {};
 int i, len, counter, Range, j;
 double value1 , value2;
 float alpha1, alpha2, error1, error2, totalT, control_output1, control_output2;
-bool trigger, flag = HIGH;//Flag is for detecting the position of the peak.
+volatile bool trigger_active = false;
+bool flag = HIGH;//Flag is for detecting the position of the peak.
 bool indicator2 = LOW; //indicator is for indicating the presence of the 795 peak
 bool lock;
 
@@ -40,28 +41,23 @@ void setup() {
   analogWriteResolution(12);
   analogReadResolution(12);
   pinMode(dpin_in, INPUT);
-  pinMode(dpin_out, OUTPUT);
-  digitalWrite(dpin_out, LOW);
+  pinMode(dpin_out, INPUT);
+  attachInterrupt(digitalPinToInterrupt(dpin_out), triggerISR, CHANGE);
   Range = (pow(2, 12) - 1) - 200;
 }
 void loop() {
   lock = digitalRead(dpin_in);
   if(lock){
-  start_time = micros();
-  digitalWrite(dpin_out, HIGH);//starting point of the sweep
-  trigger = HIGH;
-  indicator2 = LOW;
-  tstartsweep = millis();
-  counter = 0;
+    if (trigger_active) {
+      start_time = micros();
+      indicator2 = LOW;
+      tstartsweep = millis();
+      counter = 0;
   do {
     //Serial.println(counter);
     value1 = analogRead(pin_input1);
     value2 = analogRead(pin_input2);
     //Serial.println(value1);
-    timenow = millis();
-    if (timenow - tstartsweep > period) { //Set the limit of time to sweep PZT
-      trigger = LOW;
-    }
     if (value1 > High_threshold1 ) {//starting point of the peaks from PD1
       
       
@@ -93,6 +89,7 @@ void loop() {
         //Serial.println(t02);
       }
       counter++;  
+      if (counter >= 3) break;
       }
       if (counter == 1) {
         if (value2 > High_threshold2 && indicator2 == LOW) { //starting point of the 795nm peak, counter>0 requires that the peak between two reference peaks.
@@ -120,7 +117,7 @@ void loop() {
       
 
 //
-  } while (trigger == HIGH);
+  } while (true);
   
 //Serial.println("delt1");
 //error1 = (double)t1 - t01;
@@ -152,7 +149,7 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
     //Serial.println(alpha2 * 10, 4);
   }
 
-digitalWrite(dpin_out, LOW);//Change the trigger state back to LOW
+  while (trigger_active) {}
   }
   else {
     Serial.println("Lock disengaged");
@@ -195,4 +192,8 @@ unsigned long peakfinder(int number, unsigned long duration) {//subfunction for 
   //Serial.println(dsignalarray[j]);
   //Serial.println(dsignalarray[j-1]);
   //return peaktime;
+}
+
+void triggerISR() {
+  trigger_active = digitalRead(dpin_out);
 }

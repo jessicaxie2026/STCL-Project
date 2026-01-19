@@ -18,10 +18,10 @@
 // Trigger state will be read via polling from `dpin_in` in the main loop
 int signalarray[arraysize], dsignalarray[arraysize];
 unsigned long t01, t02, t2, start_time, end_time, time_peak, tstartsweep, timenow; // [cite: 46]
-unsigned long period = 50; // Sweep period limit in ms
 int counter, len, Range;
 double error2, totalT;
-bool trigger, flag; // [cite: 48]
+volatile bool trigger_active = false;
+bool flag; // [cite: 48]
 
 // PID Variables 
 int sign2 = -1;
@@ -37,8 +37,8 @@ void setup() {
   // --- EXTERNAL TRIGGER SETUP ---
   pinMode(dpin_in, INPUT);
   
-  pinMode(dpin_out, OUTPUT); // [cite: 51]
-  digitalWrite(dpin_out, LOW); // [cite: 51]
+  pinMode(dpin_out, INPUT);
+  attachInterrupt(digitalPinToInterrupt(dpin_out), triggerISR, CHANGE);
   
   Range = (pow(2, 12) - 1) - 200;
 }
@@ -48,22 +48,15 @@ void loop() {
   bool lock = digitalRead(dpin_in);
 
   if (lock) {
-    start_time = micros();
-    digitalWrite(dpin_out, HIGH);
-    trigger = HIGH; 
-    bool indicator2 = LOW;
-    tstartsweep = millis();
-    counter = 0;
+    if (trigger_active) {
+      start_time = micros();
+      bool indicator2 = LOW;
+      tstartsweep = millis();
+      counter = 0;
 
     do {
       int value1 = analogRead(pin_input1);
       int value2 = analogRead(pin_input2);
-      timenow = millis(); // [cite: 54]
-
-      // Trigger timeout logic [cite: 55]
-      if (timenow - tstartsweep > period) { 
-        trigger = LOW;
-      }
       
       if (value1 > High_threshold1) {
         time_peak = micros();
@@ -82,6 +75,7 @@ void loop() {
           t02 = (time_peak - start_time) + peakfinder(len, end_time - time_peak); // [cite: 60]
         }
         counter++;
+        if (counter >= 3) break;
       }
 
       if (counter == 1 && value2 > High_threshold2 && !indicator2) {
@@ -97,8 +91,9 @@ void loop() {
         end_time = micros();
         t2 = (time_peak - start_time) + peakfinder(i, end_time - time_peak); // [cite: 64]
         counter++;
+        if (counter >= 3) break;
       }
-    } while (trigger == HIGH); // Loop based on trigger status [cite: 65]
+    } while (true); // Loop based on trigger status [cite: 65]
 
     error2 = (double)t2 - t01;
     totalT = (double)t02 - t01;
@@ -115,14 +110,14 @@ void loop() {
       
       Serial.print("Error:"); Serial.println(laser2_error_signal_current);
     }
-    digitalWrite(dpin_out, LOW); // Manual trigger end [cite: 72]
+    while (trigger_active) {}
   } else {
     Serial.println("Lock disengaged"); // [cite: 73]
     analogWrite(pin_output2, 2072); 
   }
 }
 
-// ISR removed: using polling on `dpin_in` for trigger state
+// ISR added: using interrupt on `dpin_out` for trigger state
 
 unsigned long peakfinder(int number, unsigned long duration) {
   if (number < 13) return 0;
@@ -139,4 +134,8 @@ unsigned long peakfinder(int number, unsigned long duration) {
     }
   }
   return 0;
+}
+
+void triggerISR() {
+  trigger_active = digitalRead(dpin_out);
 }

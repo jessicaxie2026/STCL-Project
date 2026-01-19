@@ -19,19 +19,23 @@ double error2, totalT, alpha2;
 
 // Trigger state will be polled from `dpin_in`
 
+volatile bool trigger_active = false;
+
 void setup() {
   Serial.begin(115200); 
   analogReadResolution(12); 
   
   // Setup trigger pin for polling
   pinMode(dpin_in, INPUT);
+  pinMode(dpin_out, INPUT);
+  attachInterrupt(digitalPinToInterrupt(dpin_out), triggerISR, CHANGE);
 }
 
 void loop() {
   // Poll the trigger pin instead of using an ISR
   if (digitalRead(dpin_in) == HIGH) {
-    digitalWrite(dpin_out, HIGH);
-    start_time = micros();
+    if (trigger_active) {
+      start_time = micros();
     int counter = 0;
     bool indicator2 = LOW;
     bool sweep_active = HIGH;
@@ -96,9 +100,8 @@ void loop() {
       Serial.println("Error: Failed to capture all 3 peaks.");
     }
 
-    digitalWrite(dpin_out, LOW); //Change the trigger state back to LOW
-    // Wait for the external trigger pin to return to LOW before next cycle
-    while(digitalRead(dpin_in) == HIGH);
+    while (trigger_active) {}
+  }
 }
 
 
@@ -121,4 +124,8 @@ unsigned long peakfinder(int number, unsigned long duration) {
     }
   }
   return 0;
+}
+
+void triggerISR() {
+  trigger_active = digitalRead(dpin_out);
 }
