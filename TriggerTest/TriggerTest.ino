@@ -4,30 +4,26 @@
 #define dpin_in 3     // Trigger input (polling)
 #define dpin_out 6    // Output for function generator
 
-volatile bool trigger_active = false;
+// Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
 
 void setup() {
   Serial.begin(115200);
   analogWriteResolution(12);
   analogReadResolution(12);
-  pinMode(dpin_in, INPUT);
+  pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
-  attachInterrupt(digitalPinToInterrupt(dpin_out), triggerISR, CHANGE);
 }
 
 void loop() {
-  bool lock = digitalRead(dpin_in);
-  if (lock) {
-    if (trigger_active) {
+  if (digitalRead(dpin_in) == LOW) {
+    if (digitalRead(dpin_out) == HIGH) {
       int raw_signal = analogRead(pin_input1);
       Serial.println(raw_signal);
-      while (trigger_active) {}
+    } else {
+      Serial.println(0);
     }
   } else {
-    Serial.println(0);
+    Serial.println("switch off");
   }
 }
 
-void triggerISR() {
-  trigger_active = digitalRead(dpin_out);
-}

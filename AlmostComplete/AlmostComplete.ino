@@ -20,7 +20,7 @@ int signalarray[arraysize], dsignalarray[arraysize];
 unsigned long t01, t02, t2, start_time, end_time, time_peak, tstartsweep, timenow; // [cite: 46]
 int counter, len, Range;
 double error2, totalT;
-volatile bool trigger_active = false;
+// Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
 bool flag; // [cite: 48]
 
 // PID Variables 
@@ -35,20 +35,17 @@ void setup() {
   analogWriteResolution(12);
   
   // --- EXTERNAL TRIGGER SETUP ---
-  pinMode(dpin_in, INPUT);
-  
+  pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
-  attachInterrupt(digitalPinToInterrupt(dpin_out), triggerISR, CHANGE);
+  // trigger read via dpin_out per TriggerCheck mapping
   
   Range = (pow(2, 12) - 1) - 200;
 }
 
 void loop() {
   // Read the trigger pin via polling (two-pin system: dpin_in + dpin_out)
-  bool lock = digitalRead(dpin_in);
-
-  if (lock) {
-    if (trigger_active) {
+  if (digitalRead(dpin_in) == LOW) {
+    if (digitalRead(dpin_out) == HIGH) {
       start_time = micros();
       bool indicator2 = LOW;
       tstartsweep = millis();
@@ -110,10 +107,10 @@ void loop() {
       
       Serial.print("Error:"); Serial.println(laser2_error_signal_current);
     }
-    while (trigger_active) {}
+    }
   } else {
-    Serial.println("Lock disengaged"); // [cite: 73]
-    analogWrite(pin_output2, 2072); 
+    Serial.println("Lock disengaged");
+    analogWrite(pin_output2, 2072);
   }
 }
 
@@ -137,5 +134,5 @@ unsigned long peakfinder(int number, unsigned long duration) {
 }
 
 void triggerISR() {
-  trigger_active = digitalRead(dpin_out);
+  // Removed: trigger read is now polled from dpin_out
 }

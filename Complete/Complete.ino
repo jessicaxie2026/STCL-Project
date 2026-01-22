@@ -19,7 +19,7 @@ int signalarray[arraysize], dsignalarray[arraysize] = {};
 int i, len, counter, Range, j;
 double value1 , value2;
 float alpha1, alpha2, error1, error2, totalT, control_output1, control_output2;
-volatile bool trigger_active = false;
+// Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
 bool flag = HIGH;//Flag is for detecting the position of the peak.
 bool indicator2 = LOW; //indicator is for indicating the presence of the 795 peak
 bool lock;
@@ -40,15 +40,14 @@ void setup() {
   //Serial.begin(9600);
   analogWriteResolution(12);
   analogReadResolution(12);
-  pinMode(dpin_in, INPUT);
+  pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
-  attachInterrupt(digitalPinToInterrupt(dpin_out), triggerISR, CHANGE);
+  // read triggerPin via dpin_out in loop
   Range = (pow(2, 12) - 1) - 200;
 }
 void loop() {
-  lock = digitalRead(dpin_in);
-  if(lock){
-    if (trigger_active) {
+  if (digitalRead(dpin_in) == LOW) {
+    if (digitalRead(dpin_out) == HIGH) {
       start_time = micros();
       indicator2 = LOW;
       tstartsweep = millis();
@@ -149,9 +148,8 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
     //Serial.println(alpha2 * 10, 4);
   }
 
-  while (trigger_active) {}
-  }
-  else {
+    }
+  } else {
     Serial.println("Lock disengaged");
     control_output2 = (double)2072.5;
     analogWrite(DAC1, control_output2);
@@ -195,5 +193,5 @@ unsigned long peakfinder(int number, unsigned long duration) {//subfunction for 
 }
 
 void triggerISR() {
-  trigger_active = digitalRead(dpin_out);
+  // Removed: trigger read is handled by polling dpin_out
 }

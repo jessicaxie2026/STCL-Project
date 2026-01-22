@@ -9,20 +9,19 @@
 
 int signalarray[arraysize];
 
-volatile bool trigger_active = false;
+// Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
 
 void setup() {
   Serial.begin(115200);
   analogWriteResolution(12);
   analogReadResolution(12);
-  pinMode(dpin_in, INPUT);
+  pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
-  attachInterrupt(digitalPinToInterrupt(dpin_out), triggerISR, CHANGE);
 }
 
 void loop() {
-  if (digitalRead(dpin_in) == HIGH) {
-    if (trigger_active) {
+  if (digitalRead(dpin_in) == LOW) {
+    if (digitalRead(dpin_out) == HIGH) {
       unsigned long start_time = micros();
       unsigned long tstartsweep = millis();
       int value1 = analogRead(pin_input1);
@@ -39,7 +38,6 @@ void loop() {
         unsigned long peak_offset = peakfinder(count, end_time - time_peak);
         Serial.println((double)(time_peak - start_time + peak_offset) / 1000000.0, 6);
       }
-      while (trigger_active) {}
     }
   }
 }
@@ -57,6 +55,4 @@ unsigned long peakfinder(int number, unsigned long duration) {
   return 0;
 }
 
-void triggerISR() {
-  trigger_active = digitalRead(dpin_out);
-}
+ 

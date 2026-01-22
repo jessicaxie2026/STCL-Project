@@ -12,24 +12,20 @@ unsigned long t01, start_time, end_time, time_peak, tstartsweep;
 unsigned long period = 50; // Sweep period limit in ms
 int signalarray[arraysize], dsignalarray[arraysize];
 bool flag = HIGH; // Flag for detecting peak position
-volatile bool trigger_active = false;
+// Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
 
 void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
 
-  pinMode(dpin_in, INPUT);
+  pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
-  attachInterrupt(digitalPinToInterrupt(dpin_out), triggerISR, CHANGE);
 }
 
 void loop() {
-  // Check if the lock/trigger pin is HIGH to start the cycle
-  bool lock = digitalRead(dpin_in);
-
-  if (lock) {
+  // Check the lock (dpin_in) per TriggerCheck mapping
+  if (digitalRead(dpin_in) == LOW) {
     start_time = micros();
-    digitalWrite(dpin_out, HIGH);
     trigger = HIGH;
     tstartsweep = millis();
     bool peak_captured = false;
@@ -69,8 +65,7 @@ void loop() {
     } else {
       Serial.println("Error: No peak detected within timeout.");
     }
-
-    digitalWrite(dpin_out, LOW); //Change the trigger state back to LOW
+    // dpin_out is read as triggerPin in TriggerCheck pattern; do not drive it here
   } else {
     Serial.println("Lock disengaged");
   }

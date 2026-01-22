@@ -39,16 +39,15 @@ void setup() {
   //Serial.begin(9600);
   analogWriteResolution(12);
   analogReadResolution(12);
-  pinMode(dpin_in, INPUT);
-  pinMode(dpin_out, OUTPUT);
-  digitalWrite(dpin_out, LOW);
+  pinMode(dpin_in, INPUT_PULLUP);
+  pinMode(dpin_out, INPUT);
   Range = (pow(2, 12) - 1) - 200;
 }
 void loop() {
   lock = digitalRead(dpin_in);
-  if(lock){
+  if (digitalRead(dpin_in) == LOW) {
   start_time = micros();
-  digitalWrite(dpin_out, HIGH);//starting point of the sweep
+  // triggerPin is read via dpin_out in TriggerCheck pattern
   trigger = HIGH;
   indicator2 = LOW;
   tstartsweep = millis();
@@ -152,7 +151,7 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
     //Serial.println(alpha2 * 10, 4);
   }
 
-digitalWrite(dpin_out, LOW);//Change the trigger state back to LOW
+// In TriggerCheck pattern the trigger state is read from dpin_out; do not drive dpin_out here
   }
   else {
     Serial.println("Lock disengaged");

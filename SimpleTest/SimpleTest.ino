@@ -4,14 +4,20 @@
 
 void setup() {
   Serial.begin(250000);
-  pinMode(dpin_in, INPUT);
-  pinMode(dpin_out, OUTPUT);
-  digitalWrite(dpin_out, LOW);
+  // TriggerCheck mapping: dpin_in = lock (INPUT_PULLUP), dpin_out = triggerPin (INPUT)
+  pinMode(dpin_in, INPUT_PULLUP);
+  pinMode(dpin_out, INPUT);
 }
 
 void loop() {
-    digitalWrite(dpin_out, HIGH);
-    delay(50);
-    digitalWrite(dpin_out, LOW);
-    delay(50);
+  if (digitalRead(dpin_in) == LOW) {
+    if (digitalRead(dpin_out) == HIGH) {
+      Serial.println("TRIGGER DETECTED!");
+    } else {
+      Serial.println("no trigger");
+    }
+  } else {
+    Serial.println("switch off");
+  }
+  delay(50);
 }
