@@ -33,7 +33,7 @@ void loop() {
           if (count < arraysize) signalarray[count] = value1;
           value1 = analogRead(pin_input1);
           count++;
-        } while (value1 > Low_threshold1 && (millis() - tstartsweep) <= period);
+        } while (value1 > Low_threshold1 && (millis() - tstartsweep) <= 50);
         unsigned long end_time = micros();
         if (count > arraysize) count = arraysize;
         unsigned long peak_offset = peakfinder(count, end_time - time_peak);

@@ -1,22 +1,35 @@
-const int triggerPin = 2;
-unsigned long period = 50; // Sweep period limit in ms
+const int triggerPin = 6;  
+const int lock = 4;      
 
 void setup() {
-  Serial.begin(115200);
-  pinMode(triggerPin, INPUT);
-  Serial.println("System ready. Waiting for trigger on Pin D2...");
+  Serial.begin(115200); 
+  
+  pinMode(triggerPin, INPUT); 
+  
+  pinMode(lock, INPUT_PULLUP); 
+
+  Serial.println("System ready. Waiting for trigger on Pin D3..."); 
 }
 
 void loop() {
-  if (digitalRead(triggerPin) == HIGH) {
-    unsigned long tstartsweep = millis();
-    digitalWrite(2, HIGH);
-    if ((millis() - tstartsweep) <= period) {
-      Serial.println("TRIGGER DETECTED!");
+  if (digitalRead(lock) == LOW) { 
+    
+    // Check the external triggerPin 
+    if (digitalRead(triggerPin) == HIGH) { 
+        Serial.println("TRIGGER DETECTED!"); 
+        delayMicroseconds(1000); 
     }
-    while (digitalRead(triggerPin) == HIGH);
-    digitalWrite(2, LOW); //Change the trigger state back to LOW
-  } else {
-    Serial.println("nope");
+    
+    if (digitalRead(triggerPin) == LOW) { 
+      Serial.println("no trigger"); 
+      delayMicroseconds(1000); 
+    }
+    
+  } 
+  
+  // If the SPDT switch is flipped away from Ground (HIGH)
+  if (digitalRead(lock) == HIGH) { 
+    Serial.println("switch off"); 
+    delayMicroseconds(1000); 
   }
 }

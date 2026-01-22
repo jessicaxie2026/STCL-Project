@@ -7,7 +7,7 @@
 volatile bool trigger_active = false;
 
 void setup() {
-  Serial.begin(250000);
+  Serial.begin(115200);
   analogWriteResolution(12);
   analogReadResolution(12);
   pinMode(dpin_in, INPUT);
@@ -24,7 +24,7 @@ void loop() {
       while (trigger_active) {}
     }
   } else {
-    Serial.println("Lock disengaged");
+    Serial.println(0);
   }
 }
 
