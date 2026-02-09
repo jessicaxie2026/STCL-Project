@@ -106,6 +106,7 @@ void loop() {
       analogWrite(pin_output2, (int)control_output2);
       
       Serial.print("Error:"); Serial.println(laser2_error_signal_current);
+      Serial.println("Control Signal:"); Serial.println(control_output2);
     }
     }
   } else {

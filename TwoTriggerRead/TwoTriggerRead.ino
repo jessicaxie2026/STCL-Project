@@ -30,7 +30,5 @@ void loop() {
   } else {
     Serial.println("switch off");
   }
-
-  delayMicroseconds(sampleInterval);
 }
 
