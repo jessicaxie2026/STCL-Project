@@ -24,6 +24,7 @@
 // Global Variables - Peak Detection
 int signalarray[arraysize], dsignalarray[arraysize];
 unsigned long t01, t02, t2, start_time, end_time, time_peak, tstartsweep, timenow;
+unsigned long period = 50; // timeout period (ms), matched to UneditedCode
 int counter, len, Range;
 double error2, totalT;
 bool flag;
@@ -93,8 +94,12 @@ void loop() {
       bool indicator2 = LOW;
       tstartsweep = millis();
       counter = 0;
+      bool sweep_active = true;
+      bool timed_out = false;
 
       do {
+        timenow = millis();
+        if (timenow - tstartsweep > period) { timed_out = true; sweep_active = false; }
         int value1 = analogRead(pin_input1);
         int value2 = analogRead(pin_input2);
         
@@ -134,7 +139,14 @@ void loop() {
           counter++;
           if (counter >= 3) break;
         }
-      } while (true);
+      } while (sweep_active);
+
+      if (timed_out) {
+        Serial.println("Timeout - resetting after sweep");
+        // Reset PID output to safe default after timeout
+        laser2_control_signal = 0;
+        analogWrite(pin_output2, 2072);
+      }
 
       error2 = (double)t2 - t01;
       totalT = (double)t02 - t01;

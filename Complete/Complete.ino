@@ -52,7 +52,11 @@ void loop() {
       indicator2 = LOW;
       tstartsweep = millis();
       counter = 0;
+      bool sweep_active = true;
+      bool timed_out = false;
   do {
+    timenow = millis();
+    if (timenow - tstartsweep > period) { timed_out = true; sweep_active = false; }
     //Serial.println(counter);
     value1 = analogRead(pin_input1);
     value2 = analogRead(pin_input2);
@@ -116,7 +120,15 @@ void loop() {
       
 
 //
-  } while (true);
+  } while (sweep_active);
+
+  if (timed_out) {
+    Serial.println("Timeout - resetting after sweep");
+    // Reset control outputs to safe defaults after timeout
+    laser2_control_signal = 0;
+    control_output2 = (double)2072.5;
+    analogWrite(DAC1, control_output2);
+  }
   
 //Serial.println("delt1");
 //error1 = (double)t1 - t01;

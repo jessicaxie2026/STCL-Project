@@ -18,6 +18,7 @@
 // Trigger state will be read via polling from `dpin_in` in the main loop
 int signalarray[arraysize], dsignalarray[arraysize];
 unsigned long t01, t02, t2, start_time, end_time, time_peak, tstartsweep, timenow; // [cite: 46]
+unsigned long period = 50; // timeout period (ms), matched to UneditedCode
 int counter, len, Range;
 double error2, totalT;
 // Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
@@ -49,9 +50,13 @@ void loop() {
       start_time = micros();
       bool indicator2 = LOW;
       tstartsweep = millis();
-      counter = 0;
+        counter = 0;
+        bool sweep_active = true;
+        bool timed_out = false;
 
-    do {
+      do {
+        timenow = millis();
+        if (timenow - tstartsweep > period) { timed_out = true; sweep_active = false; }
       int value1 = analogRead(pin_input1);
       int value2 = analogRead(pin_input2);
       
@@ -90,7 +95,14 @@ void loop() {
         counter++;
         if (counter >= 3) break;
       }
-    } while (true); // Loop based on trigger status [cite: 65]
+    } while (sweep_active); // Loop based on trigger status [cite: 65]
+
+    if (timed_out) {
+      Serial.println("Timeout - resetting after sweep");
+      // Reset lock control state to safe defaults after timeout
+      laser2_control_signal = 0;
+      analogWrite(pin_output2, 2072);
+    }
 
     error2 = (double)t2 - t01;
     totalT = (double)t02 - t01;

@@ -40,12 +40,13 @@ void loop() {
     bool sweep_active = HIGH;
     unsigned long tstartsweep = millis();
 
+    bool timed_out = false;
     while (sweep_active) {
       int value1 = analogRead(pin_input1); 
       int value2 = analogRead(pin_input2); 
 
       // Timeout safety (50ms)
-      if (millis() - tstartsweep > period) sweep_active = LOW; 
+      if (millis() - tstartsweep > period) { timed_out = true; sweep_active = LOW; }
 
       // Detect reference peaks on Channel 1
       if (value1 > High_threshold1) { 
@@ -96,7 +97,13 @@ void loop() {
       Serial.print(" | SignalPeak: "); Serial.print(t2);
       Serial.print(" | Lock Error: "); Serial.println(lock_error, 6);
     } else {
-      Serial.println("Error: Failed to capture all 3 peaks.");
+      if (timed_out) {
+        Serial.println("Error: Timeout - failed to capture all 3 peaks. Resetting outputs.");
+        // Reset outputs to safe defaults
+        analogWrite(DAC1, 2072);
+      } else {
+        Serial.println("Error: Failed to capture all 3 peaks.");
+      }
     }
   }
 }
