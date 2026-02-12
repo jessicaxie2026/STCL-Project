@@ -135,18 +135,39 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
       Serial.println("No third peak");
     }
     else { //if there is the third peak, apply lock.
-      laser2_error_signal_current =  alpha2_ref - (double)error2 / totalT;
+      else { // If the third peak is detected, apply lock.
+      // 1. Calculate the current error (Difference between Target and Measured position)
+      laser2_error_signal_current = alpha2_ref - (double)error2 / totalT;
       Serial.println(laser2_error_signal_current);
-      //laser_error_signal_current =  alpha_ref - 0.37;
-      delta_laser2 = sign2 * laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev) + sign2 * (laser2_K_i * laser2_error_signal_current);
+
+      // 2. Calculate the change (Delta) using PI logic
+      // Proportional term reacts to the change in error
+      // Integral term adds a correction based on the absolute error
+      delta_laser2 = sign2 * laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev) + 
+                     sign2 * (laser2_K_i * laser2_error_signal_current);
+      
+      // 3. Update the cumulative control signal
       laser2_control_signal += delta_laser2;
-      laser2_error_signal_prev = laser2_error_signal_current;
-      //Serial.println(laser2_control_signal, 4);
+      
+      // 4. Convert math signal to DAC voltage (Centered at 2072.5)
       control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
-      //Serial.println(control_output2, 4);
-      //      if (control_output < Range && control_output > 0) {
+
+      // 5. SAFETY CLAMPING: Prevent the signal from going out of 12-bit bounds (0-4095)
+      // This protects the DBR from current spikes if the peak is briefly lost
+      if (control_output2 > 4095) {
+          control_output2 = 4095;
+          // Optional: laser2_control_signal -= delta_laser2; // Anti-windup adjustment
+      } 
+      if (control_output2 < 0) {
+          control_output2 = 0;
+      }
+
+      // 6. Write the physical adjustment to the DBR current driver
       analogWrite(DAC1, control_output2);
-      //      }
+
+      // Store the current error to use as 'previous' in the next iteration
+      laser2_error_signal_prev = laser2_error_signal_current;
+    }
     }
     //Serial.println(alpha2 * 10, 4);
   }
