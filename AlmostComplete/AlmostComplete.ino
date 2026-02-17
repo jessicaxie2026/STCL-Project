@@ -59,6 +59,8 @@ void loop() {
         if (timenow - tstartsweep > period) { timed_out = true; sweep_active = false; }
       int value1 = analogRead(pin_input1);
       int value2 = analogRead(pin_input2);
+      Serial.print("Value1: "); Serial.println(value1);
+      Serial.print("Value2: "); Serial.println(value2);
       
       if (value1 > High_threshold1) {
         time_peak = micros();
