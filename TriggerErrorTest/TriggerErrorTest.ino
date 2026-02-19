@@ -129,6 +129,8 @@ void loop() {
         Serial.println("Error: Failed to capture all 3 peaks.");
       }
     }
+  } else {
+    Serial.println("Lock disengaged");
   }
 }
 

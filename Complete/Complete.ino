@@ -4,7 +4,7 @@ int static_variable = 500;
 #define Low_threshold1 400 //Low threshold for stopping reading signal from peaks
 #define High_threshold2 1000 //High threshold for starting reading signal from peaks
 #define Low_threshold2 700 //Low threshold for stopping reading signal from peaks
-#define pin_input1 A0 //input signal from PD1 (D2 and 935nm)
+#define pin_input1 A2 //input signal from PD1 (D2 and 935nm)
 #define pin_input2 A4 //input signal from PD2 (795nm)
 #define arraysize 2000 //size of the array for storing the data of the peaks
 #define dpin_out 5//digital output for triggering function generator
@@ -174,9 +174,8 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
     alpha2 = error2 / totalT; //scaled error signal.
     if (!indicator2 || counter < 3) { //if not all three peaks found, do not apply lock.
       laser2_control_signal = 0;
-      control_output2 = (double)650 + Range / 2.0 * laser2_control_signal;
-      analogWrite(DAC0, control_output2);
-      Serial.println("Not all three peaks found");
+      control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
+      analogWrite(DAC1, control_output2);
     }
     else { //if there is the third peak, apply lock.
       laser2_error_signal_current =  alpha2_ref - (double)error2 / totalT;
@@ -193,6 +192,10 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
       //      }
     }
     //Serial.println(alpha2 * 10, 4);
+  }
+
+  if (counter < 3 || !indicator2) {
+    Serial.println("Not all three peaks found");
   }
 
     }
