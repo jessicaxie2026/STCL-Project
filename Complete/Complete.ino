@@ -7,7 +7,7 @@ int static_variable = 500;
 #define pin_input1 A0 //input signal from PD1 (D2 and 935nm)
 #define pin_input2 A4 //input signal from PD2 (795nm)
 #define arraysize 2000 //size of the array for storing the data of the peaks
-#define dpin_out 6//digital output for triggering function generator
+#define dpin_out 5//digital output for triggering function generator
 #define dpin_in 3
 #define alpha1_ref 0.6
 #define alpha2_ref 0.50
@@ -36,7 +36,7 @@ float laser2_control_signal = 0;
 //----------------------------------------------
 
 void setup() {
-  Serial.begin(250000);
+  Serial.begin(115200);
   //Serial.begin(9600);
   analogWriteResolution(12);
   analogReadResolution(12);
@@ -44,8 +44,43 @@ void setup() {
   pinMode(dpin_out, INPUT);
   // read triggerPin via dpin_out in loop
   Range = (pow(2, 12) - 1) - 200;
+  Serial.println("Setup complete");
 }
+
+unsigned long peakfinder(int number, unsigned long duration) {//subfunction for finding peaks
+  //Using SG filter to determine the time of the peak.
+  unsigned long dt, peaktime;
+  flag = HIGH;
+  dt = duration / number;
+  //Serial.println("time");
+  //Serial.println(duration);
+  //Serial.println("number");
+  //Serial.println(number);
+  for (int j = 6; j < (number - 7); j++) {
+    //dsignalarray[j] = int(( 5 * signalarray[j + 5] + 4 * signalarray[j + 4] +3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3]- 4 * signalarray[j - 4] - 5 * signalarray[j - 5]));
+    dsignalarray[j] = int((6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] + 3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] - 4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]));
+    
+    //Serial.println((dsignalarray[j]));
+    //analogWrite(DAC0, (dsignalarray[j] + 20000) * 0.08);
+    //analogWrite(DAC0, (dsignalarray[j] + 1000) * 1.8);
+    if (dsignalarray[j] <= 0 && flag) {
+      //Serial.println("peaktime");
+      
+      flag = LOW;
+      //peaktime = (j + dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;//uses the method of linear interpolation near the zero crossing to calculate the peaktime
+      peaktime = (j+ dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;//uses the method of linear interpolation near the zero crossing to calculate the peaktime
+      return peaktime;
+      //Serial.println(j);
+    }
+  }
+  //Serial.println(peaktime);
+  //Serial.println(dsignalarray[j]);
+  //Serial.println(dsignalarray[j-1]);
+  //return peaktime;
+}
+
 void loop() {
+  Serial.println("Loop running");
   if (digitalRead(dpin_in) == LOW) {
     if (digitalRead(dpin_out) == HIGH) {
       start_time = micros();
@@ -137,11 +172,11 @@ totalT = (double)t02 - t01;
 //--------------------------------------------------feedback for 795nm DBR
 if (totalT > 0 && totalT < 160000 && error2 < totalT) {
     alpha2 = error2 / totalT; //scaled error signal.
-    if (indicator2 == LOW || counter < 2) { //if there is no third peak, do not apply lock.
+    if (!indicator2 || counter < 3) { //if not all three peaks found, do not apply lock.
       laser2_control_signal = 0;
       control_output2 = (double)650 + Range / 2.0 * laser2_control_signal;
       analogWrite(DAC0, control_output2);
-      Serial.println("No third peak");
+      Serial.println("Not all three peaks found");
     }
     else { //if there is the third peak, apply lock.
       laser2_error_signal_current =  alpha2_ref - (double)error2 / totalT;
@@ -171,38 +206,6 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
 //Serial.println(t2-t01);
 
 
-
-unsigned long peakfinder(int number, unsigned long duration) {//subfunction for finding peaks
-  //Using SG filter to determine the time of the peak.
-  unsigned long dt, peaktime;
-  flag = HIGH;
-  dt = duration / number;
-  //Serial.println("time");
-  //Serial.println(duration);
-  //Serial.println("number");
-  //Serial.println(number);
-  for (int j = 6; j < (number - 7); j++) {
-    //dsignalarray[j] = int(( 5 * signalarray[j + 5] + 4 * signalarray[j + 4] +3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3]- 4 * signalarray[j - 4] - 5 * signalarray[j - 5]));
-    dsignalarray[j] = int((6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] + 3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] - 4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]));
-    
-    //Serial.println((dsignalarray[j]));
-    //analogWrite(DAC0, (dsignalarray[j] + 20000) * 0.08);
-    //analogWrite(DAC0, (dsignalarray[j] + 1000) * 1.8);
-    if (dsignalarray[j] <= 0 && flag) {
-      //Serial.println("peaktime");
-      
-      flag = LOW;
-      //peaktime = (j + dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;//uses the method of linear interpolation near the zero crossing to calculate the peaktime
-      peaktime = (j+ dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;//uses the method of linear interpolation near the zero crossing to calculate the peaktime
-      return peaktime;
-      //Serial.println(j);
-    }
-  }
-  //Serial.println(peaktime);
-  //Serial.println(dsignalarray[j]);
-  //Serial.println(dsignalarray[j-1]);
-  //return peaktime;
-}
 
 void triggerISR() {
   // Removed: trigger read is handled by polling dpin_out

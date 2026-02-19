@@ -3,10 +3,10 @@
 
 #define pin_input1 A2
 #define pin_input2 A4 
-#define dpin_in 2
-#define dpin_out 6
+#define dpin_in 3
+#define dpin_out 5
 #define pin_output2 DAC1
-#define arraysize 2000
+#define arraysize 1000
 
 // Thresholds and References
 #define High_threshold1 500
@@ -17,7 +17,7 @@
 #define alpha2_ref 0.50
 
 // Allan Variance Parameters
-#define MAX_MEASUREMENTS 10000     // Maximum number of frequency measurements to collect
+#define MAX_MEASUREMENTS 5000     // Maximum number of frequency measurements to collect
 #define NUM_TAU_VALUES 10          // Number of different tau values to analyze
 #define MEASUREMENT_DURATION 14400000 // Duration to collect measurements (ms) - 4 hours
 
@@ -66,7 +66,25 @@ void setup() {
   Serial.println(" seconds of data.");
 }
 
+unsigned long peakfinder(int number, unsigned long duration) {
+  if (number < 13) return 0;
+  unsigned long dt = duration / number;
+  flag = HIGH;
+  for (int j = 6; j < (number - 7); j++) {
+    dsignalarray[j] = int((6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] + 
+                       3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - 
+                       signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] - 
+                       4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]));
+    if (dsignalarray[j] <= 0 && flag) {
+      flag = LOW;
+      return (j + (float)dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;
+    }
+  }
+  return 0;
+}
+
 void loop() {
+  Serial.println("Loop running");
   // Start analysis window
   if (!is_analyzing) {
     is_analyzing = true;
@@ -140,6 +158,10 @@ void loop() {
           if (counter >= 3) break;
         }
       } while (sweep_active);
+
+      if (counter < 3 || !indicator2) {
+        Serial.println("Not all three peaks found");
+      }
 
       if (timed_out) {
         Serial.println("Timeout - resetting after sweep");
@@ -263,21 +285,4 @@ void printResults() {
   Serial.println(min_allan_dev, 6);
   
   Serial.println("\nRestarting analysis in 5 seconds...\n");
-}
-
-unsigned long peakfinder(int number, unsigned long duration) {
-  if (number < 13) return 0;
-  unsigned long dt = duration / number;
-  flag = HIGH;
-  for (int j = 6; j < (number - 7); j++) {
-    dsignalarray[j] = int((6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] + 
-                       3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - 
-                       signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] - 
-                       4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]));
-    if (dsignalarray[j] <= 0 && flag) {
-      flag = LOW;
-      return (j + (float)dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;
-    }
-  }
-  return 0;
 }

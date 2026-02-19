@@ -1,8 +1,8 @@
 // Pins and Constants
 #define pin_input1 A2
 #define pin_input2 A4 
-#define dpin_in 2       // External trigger pin (Ensure this supports interrupts)
-#define dpin_out 6      // Digital output for triggering function generator 
+#define dpin_in 3       // External trigger pin (Ensure this supports interrupts)
+#define dpin_out 5      // Digital output for triggering function generator 
 #define pin_output2 DAC1 // Feedback signal to 795nm DBR current
 #define arraysize 2000
 
@@ -41,10 +41,29 @@ void setup() {
   // trigger read via dpin_out per TriggerCheck mapping
   
   Range = (pow(2, 12) - 1) - 200;
+  Serial.println("Setup complete");
+}
+
+unsigned long peakfinder(int number, unsigned long duration) {
+  if (number < 13) return 0;
+  unsigned long dt = duration / number;
+  flag = HIGH;
+  for (int j = 6; j < (number - 7); j++) {
+    dsignalarray[j] = int((6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] + 
+                       3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - 
+                       signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] - 
+                       4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6])); // [cite: 76]
+    if (dsignalarray[j] <= 0 && flag) {
+      flag = LOW;
+      return (j + (float)dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt; // [cite: 77]
+    }
+  }
+  return 0;
 }
 
 void loop() {
   // Read the trigger pin via polling (two-pin system: dpin_in + dpin_out)
+  Serial.println("Loop running");
   if (digitalRead(dpin_in) == LOW) {
     if (digitalRead(dpin_out) == HIGH) {
       start_time = micros();
@@ -99,6 +118,10 @@ void loop() {
       }
     } while (sweep_active); // Loop based on trigger status [cite: 65]
 
+    if (counter < 3 || !indicator2) {
+      Serial.println("Not all three peaks found");
+    }
+
     if (timed_out) {
       Serial.println("Timeout - resetting after sweep");
       // Reset lock control state to safe defaults after timeout
@@ -130,23 +153,6 @@ void loop() {
 }
 
 // ISR added: using interrupt on `dpin_out` for trigger state
-
-unsigned long peakfinder(int number, unsigned long duration) {
-  if (number < 13) return 0;
-  unsigned long dt = duration / number;
-  flag = HIGH;
-  for (int j = 6; j < (number - 7); j++) {
-    dsignalarray[j] = int((6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] + 
-                       3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - 
-                       signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] - 
-                       4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6])); // [cite: 76]
-    if (dsignalarray[j] <= 0 && flag) {
-      flag = LOW;
-      return (j + (float)dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt; // [cite: 77]
-    }
-  }
-  return 0;
-}
 
 void triggerISR() {
   // Removed: trigger read is now polled from dpin_out

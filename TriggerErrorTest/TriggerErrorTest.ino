@@ -6,7 +6,8 @@
 
 #define pin_input1 A2
 #define pin_input2 A4 
-#define dpin_in 2       // Pin for external trigger
+#define dpin_in 3       // Pin for external trigger
+#define dpin_out 5      // Digital output for triggering function generator
 #define arraysize 2000 
 #define alpha2_ref 0.50
 
@@ -28,10 +29,33 @@ void setup() {
   // Setup trigger pin for polling
   pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
+  Serial.println("Setup complete");
+}
+
+// Savitzky-Golay Filter for peak center detection
+unsigned long peakfinder(int number, unsigned long duration) { 
+  unsigned long dt = duration / number; 
+  flag = HIGH;
+  
+  for (int j = 6; j < (number - 7); j++) { 
+    // 13-point SG derivative filter 
+    dsignalarray[j] = (6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] + 
+                       3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - 
+                       signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] - 
+                       4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]);
+
+    if (dsignalarray[j] <= 0 && flag) { 
+      flag = LOW;
+      // Linear interpolation for sub-sample precision 
+      return (j + (double)dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;
+    }
+  }
+  return 0;
 }
 
 void loop() {
   // Use TriggerCheck-style polling
+  Serial.println("Loop running");
   if (digitalRead(dpin_in) == LOW) {
     if (digitalRead(dpin_out) == HIGH) {
       start_time = micros();
@@ -108,26 +132,5 @@ void loop() {
   }
 }
 
-
-// Savitzky-Golay Filter for peak center detection
-unsigned long peakfinder(int number, unsigned long duration) { 
-  unsigned long dt = duration / number; 
-  flag = HIGH;
-  
-  for (int j = 6; j < (number - 7); j++) { 
-    // 13-point SG derivative filter 
-    dsignalarray[j] = (6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] + 
-                       3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - 
-                       signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] - 
-                       4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]);
-
-    if (dsignalarray[j] <= 0 && flag) { 
-      flag = LOW;
-      // Linear interpolation for sub-sample precision 
-      return (j + (double)dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;
-    }
-  }
-  return 0;
-}
 
  
