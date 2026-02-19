@@ -1,7 +1,7 @@
 const int laserPin1 = A2;        // First laser connected to A2
 const int laserPin2 = A4;        // Second laser connected to A4
-const int dpin_in = 2;           // External trigger pin (from TriggerRun.ino)
-const int dpin_out = 6;          // Digital output for triggering function generator
+const int dpin_in = 3;           // External trigger pin (from TriggerRun.ino)
+const int dpin_out = 5;          // Digital output for triggering function generator
 const int sampleInterval = 10000; // Microseconds between samples
 
 // Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
@@ -23,12 +23,14 @@ void loop() {
       int value1 = analogRead(laserPin1);
       int value2 = analogRead(laserPin2);
       Serial.print(value1);
+      Serial.print(",");
       Serial.println(value2);
     } else {
+      Serial.print(0);
+      Serial.print(",");
       Serial.println(0);
     }
   } else {
     Serial.println("switch off");
   }
 }
-
