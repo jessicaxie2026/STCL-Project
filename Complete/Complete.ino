@@ -177,19 +177,37 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
       control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
       analogWrite(DAC1, control_output2);
     }
-    else { //if there is the third peak, apply lock.
-      laser2_error_signal_current =  alpha2_ref - (double)error2 / totalT;
-      Serial.println(laser2_error_signal_current);
-      //laser_error_signal_current =  alpha_ref - 0.37;
+    else { // if there is the third peak, apply lock.
+      laser2_error_signal_current = alpha2_ref - (double)error2 / totalT;
+      
+      // --- 1. CSV DATA LOGGING ---
+      // This prints: Time, Alpha_Ref, Measured_Alpha, Error, DAC_Value
+      Serial.print(millis());
+      Serial.print(",");
+      Serial.print(alpha2_ref, 4);
+      Serial.print(",");
+      Serial.print((double)error2 / totalT, 4);
+      Serial.print(",");
+      Serial.print(laser2_error_signal_current, 6);
+      Serial.print(",");
+      Serial.println(control_output2); 
+
+      // --- 2. PID CALCULATION ---
       delta_laser2 = sign2 * laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev) + sign2 * (laser2_K_i * laser2_error_signal_current);
+      
       laser2_control_signal += delta_laser2;
+
+      // --- 3. ANTI-WINDUP CAP (THE "CAP") ---
+      // This prevents the integrator from "running away" if the laser loses lock.
+      // 0.5 is a safe limit for your signal range, adjust if needed.
+      if (laser2_control_signal > 0.5) laser2_control_signal = 0.5;
+      if (laser2_control_signal < -0.5) laser2_control_signal = -0.5;
+
       laser2_error_signal_prev = laser2_error_signal_current;
-      //Serial.println(laser2_control_signal, 4);
+      
+      // --- 4. OUTPUT TO DAC ---
       control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
-      //Serial.println(control_output2, 4);
-      //      if (control_output < Range && control_output > 0) {
       analogWrite(DAC1, control_output2);
-      //      }
     }
     //Serial.println(alpha2 * 10, 4);
   }
