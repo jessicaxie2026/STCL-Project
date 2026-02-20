@@ -1,0 +1,51 @@
+// Real-time processing: raw on DAC0 (top), SG-filtered on DAC1 (bottom, offset)
+
+const int analogPin = A2;       // Connect PCB output to A2
+const int sampleInterval = 1000; // Microseconds between samples
+#define buffersize 20
+int signalarray[buffersize];
+int index = 0;
+bool ready = false;
+
+void setup() {
+  Serial.begin(115200);
+  analogReadResolution(12); // Due supports 12-bit ADC
+
+  analogWriteResolution(12); // 12-bit DAC
+
+  // Initialize buffer
+  for (int i = 0; i < buffersize; i++) {
+    signalarray[i] = 0;
+  }
+}
+
+void loop() {
+  delayMicroseconds(sampleInterval);
+  int currentValue = analogRead(analogPin);
+
+  // Shift buffer left
+  for (int i = 0; i < buffersize - 1; i++) {
+    signalarray[i] = signalarray[i + 1];
+  }
+  signalarray[buffersize - 1] = currentValue;
+
+  index++;
+  if (index >= buffersize) {
+    ready = true;
+  }
+
+  if (ready) {
+    // Compute SG derivative at j=6 (center of 13-point window, indices 0 to 12)
+    int j = 6;
+    int dsignal = (6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] +
+                   3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] -
+                   signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] -
+                   4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]);
+
+    // Output: raw and filtered via serial for CoolTerm capture
+    Serial.print("Raw: ");
+    Serial.print(signalarray[buffersize - 1]); // Latest raw
+    Serial.print(" Filtered: ");
+    Serial.println(dsignal); // Filtered value
+  }
+}
