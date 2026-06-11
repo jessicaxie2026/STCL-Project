@@ -12,7 +12,7 @@ int static_variable = 500;
 #define alpha1_ref 0.6
 #define alpha2_ref 0.50
 #define pin_output1 DAC0 //feedback signal to 935nm ECDL piezo
-#define pin_output1 DAC1 //feedback signal to 795nm DBR current
+#define pin_output2 DAC1 //feedback signal to 795nm DBR current
 
 unsigned long t01, t02, t1, t2, start_time, end_time, tstartsweep, time_peak, timenow, period =50;
 int signalarray[arraysize], dsignalarray[arraysize] = {};
@@ -77,6 +77,7 @@ unsigned long peakfinder(int number, unsigned long duration) {//subfunction for 
   //Serial.println(dsignalarray[j]);
   //Serial.println(dsignalarray[j-1]);
   //return peaktime;
+  return 0;
 }
 
 void loop() {
@@ -179,18 +180,7 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
     }
     else { // if there is the third peak, apply lock.
       laser2_error_signal_current = alpha2_ref - (double)error2 / totalT;
-      
-      // --- 1. CSV DATA LOGGING ---
-      // This prints: Time, Alpha_Ref, Measured_Alpha, Error, DAC_Value
-      Serial.print(millis());
-      Serial.print(",");
-      Serial.print(alpha2_ref, 4);
-      Serial.print(",");
-      Serial.print((double)error2 / totalT, 4);
-      Serial.print(",");
-      Serial.print(laser2_error_signal_current, 6);
-      Serial.print(",");
-      Serial.println(control_output2); 
+    
 
       // --- 2. PID CALCULATION ---
       delta_laser2 = sign2 * laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev) + sign2 * (laser2_K_i * laser2_error_signal_current);
@@ -208,6 +198,18 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
       // --- 4. OUTPUT TO DAC ---
       control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
       analogWrite(DAC1, control_output2);
+
+      // --- 1. CSV DATA LOGGING ---
+      // This prints: Time, Alpha_Ref, Measured_Alpha, Error, DAC_Value
+      Serial.print(millis());
+      Serial.print(",");
+      Serial.print(alpha2_ref, 4);
+      Serial.print(",");
+      Serial.print((double)error2 / totalT, 4);
+      Serial.print(",");
+      Serial.print(laser2_error_signal_current, 6);
+      Serial.print(",");
+      Serial.println(control_output2); 
     }
     //Serial.println(alpha2 * 10, 4);
   }
