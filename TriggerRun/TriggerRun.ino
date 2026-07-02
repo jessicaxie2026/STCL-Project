@@ -2,7 +2,7 @@
 
 #define High_threshold1 800
 #define Low_threshold1 800
-#define pin_input1 A2
+#define pin_input1 A4
 #define arraysize 2000
 #define dpin_in 3
 #define dpin_out 6

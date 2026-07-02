@@ -190,8 +190,8 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
       // --- 3. ANTI-WINDUP CAP (THE "CAP") ---
       // This prevents the integrator from "running away" if the laser loses lock.
       // 0.5 is a safe limit for your signal range, adjust if needed.
-      if (laser2_control_signal > 0.5) laser2_control_signal = 0.5;
-      if (laser2_control_signal < -0.5) laser2_control_signal = -0.5;
+      //if (laser2_control_signal > 0.5) laser2_control_signal = 0.5;
+      //if (laser2_control_signal < -0.5) laser2_control_signal = -0.5;
 
       laser2_error_signal_prev = laser2_error_signal_current;
       
@@ -227,9 +227,3 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
 }
 //Serial.println("delt");
 //Serial.println(t2-t01);
-
-
-
-void triggerISR() {
-  // Removed: trigger read is handled by polling dpin_out
-}

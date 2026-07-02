@@ -1,16 +1,16 @@
 // Pins and Constants
 #define pin_input1 A2
 #define pin_input2 A4 
-#define dpin_in 3       // External trigger pin (Ensure this supports interrupts)
-#define dpin_out 5      // Digital output for triggering function generator 
+#define dpin_in 8       // External trigger pin (Ensure this supports interrupts)
+#define dpin_out 10      // Digital output for triggering function generator 
 #define pin_output2 DAC1 // Feedback signal to 795nm DBR current
 #define arraysize 2000
 
 // Thresholds and References
-#define High_threshold1 500
-#define Low_threshold1 400
-#define High_threshold2 1000
-#define Low_threshold2 700
+#define High_threshold1 1600
+#define Low_threshold1 1700
+#define High_threshold2 2500
+#define Low_threshold2 2600
 #define alpha1_ref 0.6  // 
 #define alpha2_ref 0.50
 
@@ -148,10 +148,4 @@ void loop() {
     Serial.println("Lock disengaged");
     analogWrite(pin_output2, 2072);
   }
-}
-
-// ISR added: using interrupt on `dpin_out` for trigger state
-
-void triggerISR() {
-  // Removed: trigger read is now polled from dpin_out
 }

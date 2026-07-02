@@ -1,8 +1,8 @@
 // Raw signal with one laser and trigger system
 
 #define pin_input1 A2 
-#define dpin_in 3     // Trigger input (polling)
-#define dpin_out 6    // Output for function generator
+#define dpin_in 8   // Trigger input (polling)
+#define dpin_out 10    // Output for function generator
 
 // Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
 
@@ -26,4 +26,3 @@ void loop() {
     Serial.println("switch off");
   }
 }
-

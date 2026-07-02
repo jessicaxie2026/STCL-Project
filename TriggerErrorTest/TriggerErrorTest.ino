@@ -1,13 +1,13 @@
 // --- Configuration and Thresholds ---
-#define High_threshold1 500
-#define Low_threshold1 400
-#define High_threshold2 1000
-#define Low_threshold2 700
+#define High_threshold1 1700
+#define Low_threshold1 1600
+#define High_threshold2 2500
+#define Low_threshold2 2600
 
 #define pin_input1 A2
 #define pin_input2 A4
-#define dpin_in 3       // Pin for external trigger
-#define dpin_out 5      // Digital output for triggering function generator
+#define dpin_in 8    // Pin for external trigger
+#define dpin_out 10      // Digital output for triggering function generator
 #define arraysize 2000
 #define alpha2_ref 0.50
 
@@ -134,5 +134,7 @@ void loop() {
       Serial.println("Lock disengaged");
     }
 
+  } else {
+    Serial.println("switch off");
   }
 }

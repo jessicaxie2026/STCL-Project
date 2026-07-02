@@ -14,7 +14,9 @@ void loop() {
 
   // Output values separated by a comma for Serial Plotter compatibility
   Serial.print(value1);
+  Serial.print(",");
   Serial.println(value2);
+    Serial.print(",");
 
-  delayMicroseconds(sampleInterval); 
+  delayMicroseconds(sampleInterval);
 }
