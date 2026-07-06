@@ -1,5 +1,5 @@
   
-const int analogPin = A2;       // Connect PCB output to A0
+const int analogPin = A8;       // Connect PCB output to A0
 const int sampleInterval = 1000; // Microseconds between samples
 
 
