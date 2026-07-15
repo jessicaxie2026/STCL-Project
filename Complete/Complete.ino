@@ -23,6 +23,8 @@ float alpha1, alpha2, error1, error2, totalT, control_output1, control_output2;
 bool flag = HIGH;//Flag is for detecting the position of the peak.
 bool indicator2 = LOW; //indicator is for indicating the presence of the 795 peak
 bool lock;
+bool sweep_active = false;
+bool prev_trigger_state = false;
 
 //----------------------------------------------
 //Define Servo Loop Variables for 795nm feedback
@@ -82,74 +84,77 @@ unsigned long peakfinder(int number, unsigned long duration) {//subfunction for 
 
 void loop() {
   Serial.println("Loop running");
-  if (digitalRead(dpin_in) == LOW) {
-    if (digitalRead(dpin_out) == HIGH) {
+  bool manual_now = (digitalRead(dpin_in) == LOW);
+  bool trigger_now = (digitalRead(dpin_out) == LOW);
+
+  if (!manual_now) {
+    sweep_active = false;
+    prev_trigger_state = trigger_now;
+    return;
+  }
+
+  if (!sweep_active) {
+    if (!prev_trigger_state && trigger_now) {
       start_time = micros();
       indicator2 = LOW;
       tstartsweep = millis();
       counter = 0;
-      bool sweep_active = true;
-      bool timed_out = false;
-  do {
-    timenow = millis();
-    if (timenow - tstartsweep > period) { timed_out = true; sweep_active = false; }
-    //Serial.println(counter);
-    value1 = analogRead(pin_input1);
-    value2 = analogRead(pin_input2);
-    //Serial.println(value1);
-    if (value1 > High_threshold1 ) {//starting point of the peaks from PD1
-      
-      
+      sweep_active = true;
+      Serial.println("Sweep start: trigger fell");
+    }
+    prev_trigger_state = trigger_now;
+    return;
+  }
+
+  timenow = millis();
+  if (timenow - tstartsweep > period) {
+    sweep_active = false;
+    prev_trigger_state = trigger_now;
+    return;
+  }
+
+  value1 = analogRead(pin_input1);
+  value2 = analogRead(pin_input2);
+
+  if (value1 > High_threshold1) {
+    time_peak = micros();
+    i = 0;
+    do {
+      signalarray[i] = value1;
+      value1 = analogRead(pin_input1);
+      i++;
+    } while (value1 > Low_threshold1);
+
+    end_time = micros();
+    len = i;
+    if (counter == 0) {
+      t01 = time_peak - start_time + peakfinder(len, end_time - time_peak);
+    }
+
+    if (counter == 2) {
+      t02 = time_peak - start_time + peakfinder(len, end_time - time_peak);
+    }
+    counter++;
+    if (counter >= 3) sweep_active = false;
+  }
+
+  if (counter == 1) {
+    if (value2 > High_threshold2 && indicator2 == LOW) {
+      indicator2 = HIGH;
       time_peak = micros();
-      //Serial.println(time_peak-start_time);
       i = 0;
       do {
-        //Serial.println(value1);
-        signalarray[i] = value1;
-        //analogWrite(DAC1, value1);
-        value1 = analogRead(pin_input1);
+        signalarray[i] = value2;
+        value2 = analogRead(pin_input2);
         i++;
-        //Serial.println(value1);
-      } while(value1 > Low_threshold1); 
+      } while (value2 > Low_threshold2);
       end_time = micros();
       len = i;
-      if (counter == 0) {
-        //t01 = start_time + peakfinder(len, end_time - start_time);
-        t01 = time_peak-start_time + peakfinder(len, end_time - time_peak);
-        //Serial.println("del");
-        //Serial.println(t01);
-        //trigger = LOW;
-      }
-      
-      
-      if (counter == 2) {
-        //t02 = start_time + peakfinder(len, end_time - start_time);
-        t02 = time_peak-start_time+ peakfinder(len, end_time - time_peak);
-        //Serial.println(t02);
-      }
-      counter++;  
-      if (counter >= 3) break;
-      }
-      if (counter == 1) {
-        if (value2 > High_threshold2 && indicator2 == LOW) { //starting point of the 795nm peak, counter>0 requires that the peak between two reference peaks.
-        indicator2 = HIGH;
-        time_peak = micros();
-        i = 0;
-        do {
-          signalarray[i] = value2;
-          //analogWrite(DAC1, value2);
-          //Serial.println(value2);
-          value2 = analogRead(pin_input2);
-          i++;
-        } while (value2 > Low_threshold2);
-        end_time = micros();
-        len = i;
-        t2 =time_peak-start_time+ peakfinder(len, end_time - time_peak);
-        //Serial.println(peakfinder(len, end_time - time_peak));
-        //Serial.println(t2);
-        //peakfinder(len, end_time - time_peak);
-        counter++;
+      t2 = time_peak - start_time + peakfinder(len, end_time - time_peak);
+      counter++;
+      if (counter >= 3) sweep_active = false;
     }
+<<<<<<< HEAD
       }
                   
       
@@ -212,17 +217,35 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
       Serial.println(control_output2); 
     }
     //Serial.println(alpha2 * 10, 4);
+=======
+>>>>>>> 391809a (trigger low sweep start)
   }
 
-  if (counter < 3 || !indicator2) {
-    Serial.println("Not all three peaks found");
-  }
+  prev_trigger_state = trigger_now;
 
+  if (!sweep_active) {
+    error2 = (double)t2 - t01;
+    totalT = (double)t02 - t01;
+
+    if (totalT > 0 && totalT < 160000 && error2 < totalT) {
+      alpha2 = error2 / totalT;
+      if (!indicator2 || counter < 3) {
+        laser2_control_signal = 0;
+        control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
+        analogWrite(DAC1, control_output2);
+      } else {
+        laser2_error_signal_current = alpha2_ref - (double)error2 / totalT;
+        delta_laser2 = sign2 * laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev) + sign2 * (laser2_K_i * laser2_error_signal_current);
+        laser2_control_signal += delta_laser2;
+        laser2_error_signal_prev = laser2_error_signal_current;
+        control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
+        analogWrite(DAC1, control_output2);
+      }
     }
-  } else {
-    Serial.println("Lock disengaged");
-    control_output2 = (double)2072.5;
-    analogWrite(DAC1, control_output2);
+
+    if (counter < 3 || !indicator2) {
+      Serial.println("Not all three peaks found");
+    }
   }
 }
 //Serial.println("delt");

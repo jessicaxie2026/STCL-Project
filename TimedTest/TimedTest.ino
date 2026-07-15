@@ -12,7 +12,10 @@ unsigned long t01, start_time, end_time, time_peak, tstartsweep;
 unsigned long period = 50; // Sweep period limit in ms
 int signalarray[arraysize], dsignalarray[arraysize];
 bool flag = HIGH; // Flag for detecting peak position
-// Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
+bool trigger = false; // Trigger flag for two-pin system
+bool sweep_active = false;
+bool prev_trigger_state = false;
+bool peak_captured = false;
 
 void setup() {
   Serial.begin(115200);
@@ -22,52 +25,58 @@ void setup() {
   pinMode(dpin_out, INPUT);
 }
 
-void loop() {
-  // Check the lock (dpin_in) per TriggerCheck mapping
-  if (digitalRead(dpin_in) == LOW) {
-    start_time = micros();
-    trigger = HIGH;
-    tstartsweep = millis();
-    bool peak_captured = false;
 
-    // Loop until sweep period expires
-    do {
-      int value1 = analogRead(pin_input1);
-      unsigned long timenow = millis();
+  void loop() {
+  bool manual_now = (digitalRead(dpin_in) == LOW);
+  bool trigger_now = (digitalRead(dpin_out) == LOW);
 
-      // Timeout safety
-      if (timenow - tstartsweep > period) {
-        trigger = LOW;
-      }
+  if (!manual_now) {
+    sweep_active = false;
+    prev_trigger_state = trigger_now;
+    return;
+  }
 
-      // Detect peak on Channel 1
-      if (value1 > High_threshold1 && !peak_captured) {
-        time_peak = micros();
-        int i = 0;
-        do {
-          if (i < arraysize) signalarray[i] = value1;
-          value1 = analogRead(pin_input1);
-          i++;
-        } while (value1 > Low_threshold1);
-
-        end_time = micros();
-
-        // Calculate exact peak time using SG filter
-        t01 = (time_peak - start_time) + peakfinder(i, end_time - time_peak);
-        peak_captured = true;
-      }
-    } while (trigger == HIGH);
-
-    // --- Output Results ---
-    if (peak_captured) {
-      Serial.print("Peak Time (us): ");
-      Serial.println(t01);
-    } else {
-      Serial.println("Error: No peak detected within timeout.");
+  if (!sweep_active) {
+    if (!prev_trigger_state && trigger_now) {
+      start_time = micros();
+      trigger = true;
+      tstartsweep = millis();
+      peak_captured = false;
+      sweep_active = true;
+      Serial.println("Sweep start: trigger fell");
     }
-    // dpin_out is read as triggerPin in TriggerCheck pattern; do not drive it here
-  } else {
-    Serial.println("Lock disengaged");
+    prev_trigger_state = trigger_now;
+    return;
+  }
+
+  int value1 = analogRead(pin_input1);
+  unsigned long timenow = millis();
+
+  if (timenow - tstartsweep > period) {
+    sweep_active = false;
+    prev_trigger_state = trigger_now;
+    return;
+  }
+
+  if (value1 > High_threshold1 && !peak_captured) {
+    time_peak = micros();
+    int i = 0;
+    do {
+      if (i < arraysize) signalarray[i] = value1;
+      value1 = analogRead(pin_input1);
+      i++;
+    } while (value1 > Low_threshold1);
+
+    end_time = micros();
+    t01 = (time_peak - start_time) + peakfinder(i, end_time - time_peak);
+    peak_captured = true;
+    sweep_active = false;
+  }
+
+  prev_trigger_state = trigger_now;
+
+  if (!sweep_active && peak_captured) {
+    Serial.println(t01);
   }
 }
 

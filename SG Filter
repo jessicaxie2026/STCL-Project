@@ -42,10 +42,12 @@ void loop() {
                    signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] -
                    4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]);
 
+    int filtered = dsignal + 2000; // offset to make it a little higher
+
     // Output: raw and filtered via serial for CoolTerm capture
     Serial.print("Raw: ");
     Serial.print(signalarray[buffersize - 1]); // Latest raw
     Serial.print(" Filtered: ");
-    Serial.println(dsignal); // Filtered value
+    Serial.println(filtered); // Filtered value
   }
 }

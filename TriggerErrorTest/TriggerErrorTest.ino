@@ -12,11 +12,15 @@
 #define alpha2_ref 0.50
 
 // --- Global Variables ---
-unsigned long t01, t02, t2, start_time, end_time, time_peak;
+unsigned long t01, t02, t2, start_time, end_time, time_peak, tstartsweep;
 unsigned long period = 50; // Sweep period limit in ms
 int signalarray[arraysize], dsignalarray[arraysize];
 bool flag = HIGH;
 double error2, totalT, alpha2;
+bool sweep_active = false;
+bool prev_trigger_state = false;
+bool indicator2 = false;
+int counter = 0;
 
 // Trigger state will be polled from `dpin_in`
 
@@ -54,87 +58,99 @@ unsigned long peakfinder(int number, unsigned long duration) {
 }
 
 void loop() {
-  // Use TriggerCheck-style polling
   Serial.println("Loop running");
-  if (digitalRead(dpin_in) == LOW) {
-    if (digitalRead(dpin_out) == HIGH) {
+  bool manual_now = (digitalRead(dpin_in) == LOW);
+  bool trigger_now = (digitalRead(dpin_out) == LOW);
+
+  if (!manual_now) {
+    sweep_active = false;
+    prev_trigger_state = trigger_now;
+    return;
+  }
+
+  if (!sweep_active) {
+    if (!prev_trigger_state && trigger_now) {
+      Serial.println(" -> starting sweep");
       start_time = micros();
-      int counter = 0;
-      bool indicator2 = LOW;
-      bool sweep_active = HIGH;
-      unsigned long tstartsweep = millis();
-
-      bool timed_out = false;
-      while (sweep_active) {
-        int value1 = analogRead(pin_input1);
-        int value2 = analogRead(pin_input2);
-
-        // Timeout safety (50ms)
-        if (millis() - tstartsweep > period) {
-          timed_out = true;
-          sweep_active = LOW;
-        }
-
-        // Detect reference peaks on Channel 1
-        if (value1 > High_threshold1) {
-          time_peak = micros();
-          int i = 0;
-          do {
-            if (i < arraysize) signalarray[i] = value1;
-            value1 = analogRead(pin_input1);
-            i++;
-          } while (value1 > Low_threshold1);
-
-          end_time = micros();
-          unsigned long p_time = time_peak - start_time + peakfinder(i, end_time - time_peak);
-
-          if (counter == 0) t01 = p_time;
-          if (counter == 2) t02 = p_time;
-          counter++;
-        }
-
-        // Detect signal peak on Channel 2 (between ref peaks)
-        if (counter == 1 && value2 > High_threshold2 && !indicator2) {
-          indicator2 = HIGH;
-          time_peak = micros();
-          int i = 0;
-          do {
-            if (i < arraysize) signalarray[i] = value2;
-            value2 = analogRead(pin_input2);
-            i++;
-          } while (value2 > Low_threshold2);
-
-          end_time = micros();
-          t2 = time_peak - start_time + peakfinder(i, end_time - time_peak);
-          counter++;
-        }
-
-        if (counter >= 3) sweep_active = LOW;
-      }
-
-      // --- Output Results ---
-      if (counter >= 3) {
-        error2 = (double)t2 - t01;
-        totalT = (double)t02 - t01;
-        alpha2 = error2 / totalT;
-        double lock_error = alpha2_ref - alpha2;
-
-        Serial.print("Peak01: "); Serial.print(t01);
-        Serial.print(" | Peak02: "); Serial.print(t02);
-        Serial.print(" | SignalPeak: "); Serial.print(t2);
-        Serial.print(" | Lock Error: "); Serial.println(lock_error, 6);
-      } else {
-        if (timed_out) {
-          Serial.println(" Timeout - failed to capture all 3 peaks. Resetting outputs.");
-        } else {
-          Serial.println(" Failed to capture all 3 peaks.");
-        }
-      }
-    } else {
-      Serial.println("Lock disengaged");
+      tstartsweep = millis();
+      counter = 0;
+      indicator2 = false;
+      sweep_active = true;
     }
+    prev_trigger_state = trigger_now;
+    return;
+  }
 
+<<<<<<< HEAD
   } else {
     Serial.println("switch off");
+=======
+  bool timed_out = false;
+  int value1 = analogRead(pin_input1);
+  int value2 = analogRead(pin_input2);
+
+  if (millis() - tstartsweep > period) {
+    timed_out = true;
+    sweep_active = false;
+    prev_trigger_state = trigger_now;
+    return;
+  }
+
+  if (value1 > High_threshold1) {
+    time_peak = micros();
+    int i = 0;
+    do {
+      if (i < arraysize) signalarray[i] = value1;
+      value1 = analogRead(pin_input1);
+      i++;
+    } while (value1 > Low_threshold1);
+
+    end_time = micros();
+    unsigned long p_time = time_peak - start_time + peakfinder(i, end_time - time_peak);
+
+    if (counter == 0) t01 = p_time;
+    if (counter == 2) t02 = p_time;
+    counter++;
+  }
+
+  if (counter == 1 && value2 > High_threshold2) {
+    if (!indicator2) {
+      indicator2 = true;
+      time_peak = micros();
+      int i = 0;
+      do {
+        if (i < arraysize) signalarray[i] = value2;
+        value2 = analogRead(pin_input2);
+        i++;
+      } while (value2 > Low_threshold2);
+
+      end_time = micros();
+      t2 = time_peak - start_time + peakfinder(i, end_time - time_peak);
+      counter++;
+    }
+  }
+
+  if (counter >= 3) sweep_active = false;
+  prev_trigger_state = trigger_now;
+
+  if (!sweep_active) {
+    if (counter >= 3) {
+      error2 = (double)t2 - t01;
+      totalT = (double)t02 - t01;
+      alpha2 = error2 / totalT;
+      double lock_error = alpha2_ref - alpha2;
+
+      Serial.print("Peak01: "); Serial.print(t01);
+      Serial.print(" | Peak02: "); Serial.print(t02);
+      Serial.print(" | SignalPeak: "); Serial.print(t2);
+      Serial.print(" | Lock Error: "); Serial.println(lock_error, 6);
+    } else {
+      if (timed_out) {
+        Serial.println(" Timeout - failed to capture all 3 peaks. Resetting outputs.");
+      } else {
+        Serial.println(" Failed to capture all 3 peaks.");
+      }
+    }
+>>>>>>> 391809a (trigger low sweep start)
   }
 }
