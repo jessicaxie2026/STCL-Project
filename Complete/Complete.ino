@@ -39,12 +39,11 @@ float laser2_control_signal = 0;
 
 void setup() {
   Serial.begin(115200);
-  //Serial.begin(9600);
   analogWriteResolution(12);
   analogReadResolution(12);
   pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
-  // read triggerPin via dpin_out in loop
+  pinMode(pin_output2, OUTPUT);
   Range = (pow(2, 12) - 1) - 200;
   Serial.println("Setup complete");
 }
@@ -52,6 +51,7 @@ void setup() {
 unsigned long peakfinder(int number, unsigned long duration) {//subfunction for finding peaks
   //Using SG filter to determine the time of the peak.
   unsigned long dt, peaktime;
+  if (number < 13) return 0;
   flag = HIGH;
   dt = duration / number;
   //Serial.println("time");
@@ -83,7 +83,6 @@ unsigned long peakfinder(int number, unsigned long duration) {//subfunction for 
 }
 
 void loop() {
-  Serial.println("Loop running");
   bool manual_now = (digitalRead(dpin_in) == LOW);
   bool trigger_now = (digitalRead(dpin_out) == LOW);
 
@@ -96,9 +95,14 @@ void loop() {
   if (!sweep_active) {
     if (!prev_trigger_state && trigger_now) {
       start_time = micros();
-      indicator2 = LOW;
       tstartsweep = millis();
+      t01 = 0;
+      t02 = 0;
+      t2 = 0;
       counter = 0;
+      indicator2 = false;
+      laser2_control_signal = 0;
+      laser2_error_signal_prev = 0;
       sweep_active = true;
       Serial.println("Sweep start: trigger fell");
     }
@@ -110,115 +114,73 @@ void loop() {
   if (timenow - tstartsweep > period) {
     sweep_active = false;
     prev_trigger_state = trigger_now;
+    Serial.println("Timeout - resetting after sweep");
+    laser2_control_signal = 0;
+    control_output2 = (double)2072.5;
+    analogWrite(DAC1, control_output2);
     return;
   }
 
   value1 = analogRead(pin_input1);
   value2 = analogRead(pin_input2);
 
-  if (value1 > High_threshold1) {
+  if (counter == 0 && value1 > High_threshold1) {
     time_peak = micros();
     i = 0;
     do {
       signalarray[i] = value1;
       value1 = analogRead(pin_input1);
       i++;
-    } while (value1 > Low_threshold1);
+    } while (value1 > Low_threshold1 && i < arraysize);
 
     end_time = micros();
     len = i;
-    if (counter == 0) {
-      t01 = time_peak - start_time + peakfinder(len, end_time - time_peak);
-    }
-
-    if (counter == 2) {
-      t02 = time_peak - start_time + peakfinder(len, end_time - time_peak);
-    }
-    counter++;
-    if (counter >= 3) sweep_active = false;
+    t01 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
+    counter = 1;
+    return;
   }
 
-  if (counter == 1) {
-    if (value2 > High_threshold2 && indicator2 == LOW) {
-      indicator2 = HIGH;
-      time_peak = micros();
-      i = 0;
-      do {
-        signalarray[i] = value2;
-        value2 = analogRead(pin_input2);
-        i++;
-      } while (value2 > Low_threshold2);
-      end_time = micros();
-      len = i;
-      t2 = time_peak - start_time + peakfinder(len, end_time - time_peak);
-      counter++;
-      if (counter >= 3) sweep_active = false;
-    }
-<<<<<<< HEAD
-      }
-                  
-      
-      
+  if (counter == 1 && value2 > High_threshold2) {
+    indicator2 = true;
+    time_peak = micros();
+    i = 0;
+    do {
+      signalarray[i] = value2;
+      value2 = analogRead(pin_input2);
+      i++;
+    } while (value2 > Low_threshold2 && i < arraysize);
 
-//
-  } while (sweep_active);
-
-  if (timed_out) {
-    Serial.println("Timeout - resetting after sweep");
-    // Reset control outputs to safe defaults after timeout
-    laser2_control_signal = 0;
-    control_output2 = (double)2072.5;
-    analogWrite(DAC1, control_output2);
+    end_time = micros();
+    len = i;
+    t2 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
+    counter = 2;
+    return;
   }
-  
-//Serial.println("delt1");
-//error1 = (double)t1 - t01;
-error2 = (double)t2 - t01;
-totalT = (double)t02 - t01;
-//--------------------------------------------------feedback for 795nm DBR
-if (totalT > 0 && totalT < 160000 && error2 < totalT) {
-    alpha2 = error2 / totalT; //scaled error signal.
-    if (!indicator2 || counter < 3) { //if not all three peaks found, do not apply lock.
-      laser2_control_signal = 0;
-      control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
-      analogWrite(DAC1, control_output2);
-    }
-    else { // if there is the third peak, apply lock.
-      laser2_error_signal_current = alpha2_ref - (double)error2 / totalT;
-    
 
-      // --- 2. PID CALCULATION ---
-      delta_laser2 = sign2 * laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev) + sign2 * (laser2_K_i * laser2_error_signal_current);
-      
-      laser2_control_signal += delta_laser2;
+  if (counter == 2 && value2 > High_threshold2) {
+    i = 0;
+    do {
+      value2 = analogRead(pin_input2);
+      i++;
+    } while (value2 > Low_threshold2 && i < arraysize);
+    return;
+  }
 
-      // --- 3. ANTI-WINDUP CAP (THE "CAP") ---
-      // This prevents the integrator from "running away" if the laser loses lock.
-      // 0.5 is a safe limit for your signal range, adjust if needed.
-      //if (laser2_control_signal > 0.5) laser2_control_signal = 0.5;
-      //if (laser2_control_signal < -0.5) laser2_control_signal = -0.5;
+  if (counter == 2 && value1 > High_threshold1) {
+    time_peak = micros();
+    i = 0;
+    do {
+      signalarray[i] = value1;
+      value1 = analogRead(pin_input1);
+      i++;
+    } while (value1 > Low_threshold1 && i < arraysize);
 
-      laser2_error_signal_prev = laser2_error_signal_current;
-      
-      // --- 4. OUTPUT TO DAC ---
-      control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
-      analogWrite(DAC1, control_output2);
-
-      // --- 1. CSV DATA LOGGING ---
-      // This prints: Time, Alpha_Ref, Measured_Alpha, Error, DAC_Value
-      Serial.print(millis());
-      Serial.print(",");
-      Serial.print(alpha2_ref, 4);
-      Serial.print(",");
-      Serial.print((double)error2 / totalT, 4);
-      Serial.print(",");
-      Serial.print(laser2_error_signal_current, 6);
-      Serial.print(",");
-      Serial.println(control_output2); 
-    }
-    //Serial.println(alpha2 * 10, 4);
-=======
->>>>>>> 391809a (trigger low sweep start)
+    end_time = micros();
+    len = i;
+    t02 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
+    counter = 3;
+    sweep_active = false;
+    return;
   }
 
   prev_trigger_state = trigger_now;
@@ -248,5 +210,3 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
     }
   }
 }
-//Serial.println("delt");
-//Serial.println(t2-t01);

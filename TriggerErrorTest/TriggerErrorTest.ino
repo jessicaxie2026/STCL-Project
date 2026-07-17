@@ -1,11 +1,11 @@
 // --- Configuration and Thresholds ---
-#define High_threshold1 1700
-#define Low_threshold1 1600
-#define High_threshold2 2500
-#define Low_threshold2 2600
+#define REF_START_THRESHOLD 2900
+#define REF_END_THRESHOLD 2800
+#define SLAVE_START_THRESHOLD 1400
+#define SLAVE_END_THRESHOLD 1300
 
-#define pin_input1 A2
-#define pin_input2 A4
+#define pin_input1 A8
+#define pin_input2 A8
 #define dpin_in 8    // Pin for external trigger
 #define dpin_out 10      // Digital output for triggering function generator
 #define arraysize 2000
@@ -81,13 +81,8 @@ void loop() {
     return;
   }
 
-<<<<<<< HEAD
-  } else {
-    Serial.println("switch off");
-=======
   bool timed_out = false;
-  int value1 = analogRead(pin_input1);
-  int value2 = analogRead(pin_input2);
+  int sample = analogRead(pin_input1);
 
   if (millis() - tstartsweep > period) {
     timed_out = true;
@@ -96,38 +91,52 @@ void loop() {
     return;
   }
 
-  if (value1 > High_threshold1) {
+  if (counter == 0 && sample > REF_START_THRESHOLD) {
     time_peak = micros();
     int i = 0;
     do {
-      if (i < arraysize) signalarray[i] = value1;
-      value1 = analogRead(pin_input1);
+      if (i < arraysize) signalarray[i] = sample;
+      sample = analogRead(pin_input1);
       i++;
-    } while (value1 > Low_threshold1);
+    } while (sample > REF_END_THRESHOLD && i < arraysize);
 
     end_time = micros();
     unsigned long p_time = time_peak - start_time + peakfinder(i, end_time - time_peak);
-
-    if (counter == 0) t01 = p_time;
-    if (counter == 2) t02 = p_time;
-    counter++;
+    t01 = p_time;
+    counter = 1;
   }
+  else if (counter == 1 && sample > SLAVE_START_THRESHOLD && sample < REF_START_THRESHOLD && !indicator2) {
+    indicator2 = true;
+    time_peak = micros();
+    int i = 0;
+    do {
+      if (i < arraysize) signalarray[i] = sample;
+      sample = analogRead(pin_input1);
+      i++;
+    } while (sample > SLAVE_END_THRESHOLD && i < arraysize);
 
-  if (counter == 1 && value2 > High_threshold2) {
-    if (!indicator2) {
-      indicator2 = true;
-      time_peak = micros();
-      int i = 0;
-      do {
-        if (i < arraysize) signalarray[i] = value2;
-        value2 = analogRead(pin_input2);
-        i++;
-      } while (value2 > Low_threshold2);
+    end_time = micros();
+    t2 = time_peak - start_time + peakfinder(i, end_time - time_peak);
+    counter = 2;
+  }
+  else if (counter == 2 && sample > SLAVE_START_THRESHOLD && sample < REF_START_THRESHOLD) {
+    do {
+      sample = analogRead(pin_input1);
+    } while (sample > SLAVE_END_THRESHOLD && sample > 0);
+  }
+  else if (counter == 2 && sample > REF_START_THRESHOLD) {
+    time_peak = micros();
+    int i = 0;
+    do {
+      if (i < arraysize) signalarray[i] = sample;
+      sample = analogRead(pin_input1);
+      i++;
+    } while (sample > REF_END_THRESHOLD && i < arraysize);
 
-      end_time = micros();
-      t2 = time_peak - start_time + peakfinder(i, end_time - time_peak);
-      counter++;
-    }
+    end_time = micros();
+    t02 = time_peak - start_time + peakfinder(i, end_time - time_peak);
+    counter = 3;
+    sweep_active = false;
   }
 
   if (counter >= 3) sweep_active = false;
@@ -151,6 +160,5 @@ void loop() {
         Serial.println(" Failed to capture all 3 peaks.");
       }
     }
->>>>>>> 391809a (trigger low sweep start)
   }
 }

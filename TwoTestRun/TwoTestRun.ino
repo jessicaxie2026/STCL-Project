@@ -1,5 +1,4 @@
-const int laserPin1 = A2;        // First laser connected to A2
-const int laserPin2 = A4;        // Second laser connected to A3 
+const int signalPin = A8;        // Single peak signal input
 const int sampleInterval = 10000; // Microseconds between samples 
 
 void setup() {

@@ -1,18 +1,18 @@
 // Allan Variance Analysis for STCL Laser Locking System
 // Measures frequency stability and linewidth error over time
 
-#define pin_input1 A2
-#define pin_input2 A4 
+#define pin_input1 A8
+#define pin_input2 A8 
 #define dpin_in 3
 #define dpin_out 5
 #define pin_output2 DAC1
 #define arraysize 1000
 
 // Thresholds and References
-#define High_threshold1 500
-#define Low_threshold1 400
-#define High_threshold2 1000
-#define Low_threshold2 700
+#define REF_START_THRESHOLD 2900
+#define REF_END_THRESHOLD 2800
+#define SLAVE_START_THRESHOLD 1400
+#define SLAVE_END_THRESHOLD 1300
 #define alpha1_ref 0.6
 #define alpha2_ref 0.50
 
@@ -118,44 +118,60 @@ void loop() {
       do {
         timenow = millis();
         if (timenow - tstartsweep > period) { timed_out = true; sweep_active = false; }
-        int value1 = analogRead(pin_input1);
-        int value2 = analogRead(pin_input2);
+        int sample = analogRead(pin_input1);
         
-        if (value1 > High_threshold1) {
+        if (counter == 0 && sample > REF_START_THRESHOLD) {
           time_peak = micros();
           int i = 0;
           do {
-            signalarray[i] = value1;
-            value1 = analogRead(pin_input1);
+            signalarray[i] = sample;
+            sample = analogRead(pin_input1);
             i++;
-          } while (value1 > Low_threshold1 && i < arraysize);
+          } while (sample > REF_END_THRESHOLD && i < arraysize);
           
           end_time = micros();
           len = i;
-          
-          if (counter == 0) {
-            t01 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
-          } else if (counter == 2) {
-            t02 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
-          }
-          counter++;
+          t01 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
+          counter = 1;
           if (counter >= 3) break;
         }
 
-        if (counter == 1 && value2 > High_threshold2 && !indicator2) {
+        if (counter == 1 && sample > SLAVE_START_THRESHOLD && sample < REF_START_THRESHOLD && !indicator2) {
           indicator2 = HIGH;
           time_peak = micros();
           int i = 0;
           do {
-            signalarray[i] = value2;
-            value2 = analogRead(pin_input2);
+            signalarray[i] = sample;
+            sample = analogRead(pin_input1);
             i++;
-          } while (value2 > Low_threshold2 && i < arraysize);
+          } while (sample > SLAVE_END_THRESHOLD && i < arraysize);
           
           end_time = micros();
           t2 = (time_peak - start_time) + peakfinder(i, end_time - time_peak);
-          counter++;
+          counter = 2;
           if (counter >= 3) break;
+        }
+
+        if (counter == 2 && sample > SLAVE_START_THRESHOLD && sample < REF_START_THRESHOLD) {
+          do {
+            sample = analogRead(pin_input1);
+          } while (sample > SLAVE_END_THRESHOLD && sample > 0);
+          continue;
+        }
+
+        if (counter == 2 && sample > REF_START_THRESHOLD) {
+          time_peak = micros();
+          int i = 0;
+          do {
+            signalarray[i] = sample;
+            sample = analogRead(pin_input1);
+            i++;
+          } while (sample > REF_END_THRESHOLD && i < arraysize);
+          
+          end_time = micros();
+          t02 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
+          counter = 3;
+          break;
         }
       } while (sweep_active);
 

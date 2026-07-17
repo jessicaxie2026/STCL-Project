@@ -1,8 +1,8 @@
 // --- Configuration and Thresholds ---
-#define High_threshold1 850
-#define Low_threshold1 850
+#define REF_START_THRESHOLD 2900
+#define REF_END_THRESHOLD 2800
 
-#define pin_input1 A2
+#define pin_input1 A8
 #define dpin_in 3       // Input pin for external trigger/lock
 #define dpin_out 6      // Digital output for triggering function generator
 #define arraysize 2000  // Size of the array for storing peak data
@@ -49,7 +49,7 @@ void setup() {
     return;
   }
 
-  int value1 = analogRead(pin_input1);
+  int sample = analogRead(pin_input1);
   unsigned long timenow = millis();
 
   if (timenow - tstartsweep > period) {
@@ -58,14 +58,14 @@ void setup() {
     return;
   }
 
-  if (value1 > High_threshold1 && !peak_captured) {
+  if (sample > REF_START_THRESHOLD && !peak_captured) {
     time_peak = micros();
     int i = 0;
     do {
-      if (i < arraysize) signalarray[i] = value1;
-      value1 = analogRead(pin_input1);
+      if (i < arraysize) signalarray[i] = sample;
+      sample = analogRead(pin_input1);
       i++;
-    } while (value1 > Low_threshold1);
+    } while (sample > REF_END_THRESHOLD);
 
     end_time = micros();
     t01 = (time_peak - start_time) + peakfinder(i, end_time - time_peak);

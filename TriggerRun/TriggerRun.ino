@@ -1,8 +1,8 @@
 //shows raw data with trigger and sg filter
 
-#define High_threshold1 800
-#define Low_threshold1 800
-#define pin_input1 A4
+#define REF_START_THRESHOLD 2900
+#define REF_END_THRESHOLD 2800
+#define pin_input1 A8
 #define arraysize 2000
 #define dpin_in 3
 #define dpin_out 6
@@ -44,21 +44,21 @@ void loop() {
     return;
   }
 
-  int value1 = analogRead(pin_input1);
+  int sample = analogRead(pin_input1);
   if (millis() - tstartsweep > 50) {
     sweep_active = false;
     prev_trigger_state = trigger_now;
     return;
   }
 
-  if (value1 > High_threshold1) {
+  if (sample > REF_START_THRESHOLD) {
     unsigned long time_peak = micros();
     int count = 0;
     do {
-      if (count < arraysize) signalarray[count] = value1;
-      value1 = analogRead(pin_input1);
+      if (count < arraysize) signalarray[count] = sample;
+      sample = analogRead(pin_input1);
       count++;
-    } while (value1 > Low_threshold1 && (millis() - tstartsweep) <= 50);
+    } while (sample > REF_END_THRESHOLD && (millis() - tstartsweep) <= 50);
     unsigned long end_time = micros();
     if (count > arraysize) count = arraysize;
     unsigned long peak_offset = peakfinder(count, end_time - time_peak);

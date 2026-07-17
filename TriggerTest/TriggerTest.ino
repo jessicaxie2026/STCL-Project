@@ -1,6 +1,6 @@
 // Raw signal with one laser and trigger system
 
-#define pin_input1 A2 
+#define pin_input1 A8 
 #define dpin_in 8   // Trigger input (polling)
 #define dpin_out 10    // Output for function generator
 

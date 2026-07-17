@@ -1,11 +1,11 @@
 int random_variable;
 int static_variable = 500;
-#define High_threshold1 500 //High threshold for starting reading signal from peaks
-#define Low_threshold1 400 //Low threshold for stopping reading signal from peaks
-#define High_threshold2 1000 //High threshold for starting reading signal from peaks
-#define Low_threshold2 700 //Low threshold for stopping reading signal from peaks
-#define pin_input1 A0 //input signal from PD1 (D2 and 935nm)
-#define pin_input2 A4 //input signal from PD2 (795nm)
+#define REF_START_THRESHOLD 2900 // Reference peak start threshold
+#define REF_END_THRESHOLD 2800 // Reference peak end threshold
+#define SLAVE_START_THRESHOLD 1400 // Slave peak start threshold
+#define SLAVE_END_THRESHOLD 1300 // Slave peak end threshold
+#define pin_input1 A8 //single peak signal input
+#define pin_input2 A8 //single peak signal input (same source for compatibility)
 #define arraysize 2000 //size of the array for storing the data of the peaks
 #define dpin_out 6//digital output for triggering function generator
 #define dpin_in 3
@@ -54,66 +54,65 @@ void loop() {
   counter = 0;
   do {
     //Serial.println(counter);
-    value1 = analogRead(pin_input1);
-    value2 = analogRead(pin_input2);
-    //Serial.println(value1);
+    int sample = analogRead(pin_input1);
     timenow = millis();
     if (timenow - tstartsweep > period) { //Set the limit of time to sweep PZT
       trigger = LOW;
     }
-    if (value1 > High_threshold1 ) {//starting point of the peaks from PD1
-      
-      
+
+    if (counter == 0 && sample > REF_START_THRESHOLD) { // first reference peak
       time_peak = micros();
       //Serial.println(time_peak-start_time);
       i = 0;
       do {
-        //Serial.println(value1);
-        signalarray[i] = value1;
-        //analogWrite(DAC1, value1);
-        value1 = analogRead(pin_input1);
+        signalarray[i] = sample;
+        sample = analogRead(pin_input1);
         i++;
-        //Serial.println(value1);
-      } while(value1 > Low_threshold1); 
+      } while (sample > REF_END_THRESHOLD && i < arraysize);
       end_time = micros();
       len = i;
-      if (counter == 0) {
-        //t01 = start_time + peakfinder(len, end_time - start_time);
-        t01 = time_peak-start_time + peakfinder(len, end_time - time_peak);
-        //Serial.println("del");
-        //Serial.println(t01);
-        //trigger = LOW;
-      }
-      
-      
-      if (counter == 2) {
-        //t02 = start_time + peakfinder(len, end_time - start_time);
-        t02 = time_peak-start_time+ peakfinder(len, end_time - time_peak);
-        //Serial.println(t02);
-      }
-      counter++;  
-      }
-      if (counter == 1) {
-        if (value2 > High_threshold2 && indicator2 == LOW) { //starting point of the 795nm peak, counter>0 requires that the peak between two reference peaks.
-        indicator2 = HIGH;
-        time_peak = micros();
-        i = 0;
-        do {
-          signalarray[i] = value2;
-          //analogWrite(DAC1, value2);
-          //Serial.println(value2);
-          value2 = analogRead(pin_input2);
-          i++;
-        } while (value2 > Low_threshold2);
-        end_time = micros();
-        len = i;
-        t2 =time_peak-start_time+ peakfinder(len, end_time - time_peak);
-        //Serial.println(peakfinder(len, end_time - time_peak));
-        //Serial.println(t2);
-        //peakfinder(len, end_time - time_peak);
-        counter++;
+      t01 = time_peak-start_time + peakfinder(len, end_time - time_peak);
+      counter = 1;
+      continue;
     }
-      }
+
+    if (counter == 1 && sample > SLAVE_START_THRESHOLD && sample < REF_START_THRESHOLD) { // first slave peak
+      time_peak = micros();
+      i = 0;
+      do {
+        signalarray[i] = sample;
+        sample = analogRead(pin_input1);
+        i++;
+      } while (sample > SLAVE_END_THRESHOLD && i < arraysize);
+      end_time = micros();
+      len = i;
+      t2 = time_peak-start_time + peakfinder(len, end_time - time_peak);
+      counter = 2;
+      continue;
+    }
+
+    if (counter == 2 && sample > SLAVE_START_THRESHOLD && sample < REF_START_THRESHOLD) { // ignore second slave peak
+      do {
+        sample = analogRead(pin_input1);
+      } while (sample > SLAVE_END_THRESHOLD && sample > 0);
+      continue;
+    }
+
+    if (counter == 2 && sample > REF_START_THRESHOLD) { // second reference peak
+      time_peak = micros();
+      i = 0;
+      do {
+        signalarray[i] = sample;
+        sample = analogRead(pin_input1);
+        i++;
+      } while (sample > REF_END_THRESHOLD && i < arraysize);
+      end_time = micros();
+      len = i;
+      t02 = time_peak-start_time + peakfinder(len, end_time - time_peak);
+      counter = 3;
+      trigger = LOW;
+      continue;
+    }
                   
       
       
