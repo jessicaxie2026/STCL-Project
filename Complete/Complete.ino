@@ -1,85 +1,39 @@
-int random_variable;
-int static_variable = 500;
-#define High_threshold1 500 //High threshold for starting reading signal from peaks
-#define Low_threshold1 400 //Low threshold for stopping reading signal from peaks
-#define High_threshold2 1000 //High threshold for starting reading signal from peaks
-#define Low_threshold2 700 //Low threshold for stopping reading signal from peaks
-#define pin_input1 A2 //input signal from PD1 (D2 and 935nm)
-#define pin_input2 A4 //input signal from PD2 (795nm)
-#define arraysize 2000 //size of the array for storing the data of the peaks
-#define dpin_out 5//digital output for triggering function generator
-#define dpin_in 3
-#define alpha1_ref 0.6
-#define alpha2_ref 0.50
-#define pin_output1 DAC0 //feedback signal to 935nm ECDL piezo
-#define pin_output2 DAC1 //feedback signal to 795nm DBR current
+// --- Configuration and Thresholds ---
+#define High_threshold1 2950   // Big Peak (Master)
+#define Low_threshold1 2850
+#define High_threshold2 1400   // Small Peak (Slave)
+#define Low_threshold2 1300
 
-unsigned long t01, t02, t1, t2, start_time, end_time, tstartsweep, time_peak, timenow, period =50;
-int signalarray[arraysize], dsignalarray[arraysize] = {};
-int i, len, counter, Range, j;
-double value1 , value2;
-float alpha1, alpha2, error1, error2, totalT, control_output1, control_output2;
-// Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
-bool flag = HIGH;//Flag is for detecting the position of the peak.
-bool indicator2 = LOW; //indicator is for indicating the presence of the 795 peak
-bool lock;
+#define pin_input1 A8          // Photodiode signal
+#define dpin_in 8              // Manual lock switch
+#define dpin_out 12            // Trigger input
+#define pin_output2 DAC1       // Feedback to Slave Laser
+#define arraysize 2000
+#define alpha2_ref 0.50
+
+// --- PID / Servo Variables ---
+int sign2 = -1;                // Adjust based on laser response
+volatile float laser2_K_p = 0.7; 
+volatile float laser2_K_i = 1.0;
+float laser2_error_signal_current = 0;
+float laser2_error_signal_prev = 0;
+float laser2_control_signal = 2048; // Start at mid-rail (1.65V)
+
+// --- Global Acquisition Variables ---
+unsigned long t01, t02, t2, start_time, time_peak, tstartsweep;
+unsigned long period = 100;    // 100ms safety timeout
+int signalarray[arraysize];
 bool sweep_active = false;
 bool prev_trigger_state = false;
-
-//----------------------------------------------
-//Define Servo Loop Variables for 795nm feedback
-int sign2 = -1; //define the sign of PID parameters. 1 is positive and -1 is negative.
-volatile float laser2_K_i = 1;
-volatile float laser2_K_p = 0.7;
-float laser2_error_signal_current;
-float laser2_error_signal_prev;
-float delta_laser2 = 0;
-float laser2_control_signal = 0;
-//----------------------------------------------
+int counter = 0;
 
 void setup() {
   Serial.begin(115200);
-  analogWriteResolution(12);
   analogReadResolution(12);
+  analogWriteResolution(12);
   pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
-  pinMode(pin_output2, OUTPUT);
-  Range = (pow(2, 12) - 1) - 200;
-  Serial.println("Setup complete");
-}
-
-unsigned long peakfinder(int number, unsigned long duration) {//subfunction for finding peaks
-  //Using SG filter to determine the time of the peak.
-  unsigned long dt, peaktime;
-  if (number < 13) return 0;
-  flag = HIGH;
-  dt = duration / number;
-  //Serial.println("time");
-  //Serial.println(duration);
-  //Serial.println("number");
-  //Serial.println(number);
-  for (int j = 6; j < (number - 7); j++) {
-    //dsignalarray[j] = int(( 5 * signalarray[j + 5] + 4 * signalarray[j + 4] +3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3]- 4 * signalarray[j - 4] - 5 * signalarray[j - 5]));
-    dsignalarray[j] = int((6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] + 3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] - signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] - 4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]));
-    
-    //Serial.println((dsignalarray[j]));
-    //analogWrite(DAC0, (dsignalarray[j] + 20000) * 0.08);
-    //analogWrite(DAC0, (dsignalarray[j] + 1000) * 1.8);
-    if (dsignalarray[j] <= 0 && flag) {
-      //Serial.println("peaktime");
-      
-      flag = LOW;
-      //peaktime = (j + dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;//uses the method of linear interpolation near the zero crossing to calculate the peaktime
-      peaktime = (j+ dsignalarray[j] / (dsignalarray[j - 1] - dsignalarray[j])) * dt;//uses the method of linear interpolation near the zero crossing to calculate the peaktime
-      return peaktime;
-      //Serial.println(j);
-    }
-  }
-  //Serial.println(peaktime);
-  //Serial.println(dsignalarray[j]);
-  //Serial.println(dsignalarray[j-1]);
-  //return peaktime;
-  return 0;
+  Serial.println("Complete System: Locking 1st Small Peak to Big Peaks.");
 }
 
 void loop() {
@@ -92,121 +46,118 @@ void loop() {
     return;
   }
 
+  // Start Sweep on Trigger Edge
   if (!sweep_active) {
     if (!prev_trigger_state && trigger_now) {
       start_time = micros();
       tstartsweep = millis();
-      t01 = 0;
-      t02 = 0;
-      t2 = 0;
       counter = 0;
-      indicator2 = false;
-      laser2_control_signal = 0;
-      laser2_error_signal_prev = 0;
       sweep_active = true;
-      Serial.println("Sweep start: trigger fell");
     }
     prev_trigger_state = trigger_now;
     return;
   }
 
-  timenow = millis();
-  if (timenow - tstartsweep > period) {
-    sweep_active = false;
-    prev_trigger_state = trigger_now;
-    Serial.println("Timeout - resetting after sweep");
-    laser2_control_signal = 0;
-    control_output2 = (double)2072.5;
-    analogWrite(DAC1, control_output2);
-    return;
-  }
-
-  value1 = analogRead(pin_input1);
-  value2 = analogRead(pin_input2);
-
-  if (counter == 0 && value1 > High_threshold1) {
-    time_peak = micros();
-    i = 0;
-    do {
-      signalarray[i] = value1;
-      value1 = analogRead(pin_input1);
-      i++;
-    } while (value1 > Low_threshold1 && i < arraysize);
-
-    end_time = micros();
-    len = i;
-    t01 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
-    counter = 1;
-    return;
-  }
-
-  if (counter == 1 && value2 > High_threshold2) {
-    indicator2 = true;
-    time_peak = micros();
-    i = 0;
-    do {
-      signalarray[i] = value2;
-      value2 = analogRead(pin_input2);
-      i++;
-    } while (value2 > Low_threshold2 && i < arraysize);
-
-    end_time = micros();
-    len = i;
-    t2 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
-    counter = 2;
-    return;
-  }
-
-  if (counter == 2 && value2 > High_threshold2) {
-    i = 0;
-    do {
-      value2 = analogRead(pin_input2);
-      i++;
-    } while (value2 > Low_threshold2 && i < arraysize);
-    return;
-  }
-
-  if (counter == 2 && value1 > High_threshold1) {
-    time_peak = micros();
-    i = 0;
-    do {
-      signalarray[i] = value1;
-      value1 = analogRead(pin_input1);
-      i++;
-    } while (value1 > Low_threshold1 && i < arraysize);
-
-    end_time = micros();
-    len = i;
-    t02 = (time_peak - start_time) + peakfinder(len, end_time - time_peak);
-    counter = 3;
+  // Safety Timeout
+  if (millis() - tstartsweep > period) {
     sweep_active = false;
     return;
+  }
+
+  int sample = analogRead(pin_input1);
+
+  // --- STATE MACHINE ---
+
+  // PEAK 0: First Big Peak (Master 1)
+  if (counter == 0 && sample > High_threshold1) {
+    time_peak = micros();
+    int i = 0;
+    do {
+      if (i < arraysize) signalarray[i] = sample;
+      sample = analogRead(pin_input1);
+      i++;
+    } while (sample > Low_threshold1 && i < arraysize);
+    t01 = time_peak - start_time + peakfinder(i, micros() - time_peak);
+    counter++; 
+  }
+
+  // PEAK 1: First Small Peak (Slave - Targeted for Lock)
+  else if (counter == 1 && sample > High_threshold2) {
+    time_peak = micros();
+    int i = 0;
+    do {
+      if (i < arraysize) signalarray[i] = sample;
+      sample = analogRead(pin_input1);
+      i++;
+    } while (sample > Low_threshold2 && i < arraysize);
+    t2 = time_peak - start_time + peakfinder(i, micros() - time_peak);
+    counter++;
+  }
+
+  // PEAK 2: Second Small Peak (SKIP)
+  else if (counter == 2 && sample > High_threshold2) {
+    int i = 0;
+    do {
+      sample = analogRead(pin_input1);
+    } while (sample > Low_threshold2 && i < arraysize);
+    counter++; // CRITICAL: Increment counter to move to the next Big Peak
+  }
+
+  // PEAK 3: Second Big Peak (Master 2)
+  else if (counter == 3 && sample > High_threshold1) {
+    time_peak = micros();
+    int i = 0;
+    do {
+      if (i < arraysize) signalarray[i] = sample;
+      sample = analogRead(pin_input1);
+      i++;
+    } while (sample > Low_threshold1 && i < arraysize);
+    t02 = time_peak - start_time + peakfinder(i, micros() - time_peak);
+    counter++;
+  }
+
+  // --- CALCULATE ERROR AND APPLY FEEDBACK ---
+  if (counter >= 4) {
+    sweep_active = false;
+    double alpha2 = (double)(t2 - t01) / (t02 - t01);
+    laser2_error_signal_current = alpha2_ref - alpha2;
+
+    // Velocity PI Algorithm [1, 2]
+    float delta_u = (laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev)) + 
+                    (laser2_K_i * laser2_error_signal_current * 0.05); // 0.05 is dt (50ms)
+    
+    float new_control = laser2_control_signal + (sign2 * delta_u * 4095);
+
+    // Anti-Windup / Rail Protection [2]
+    if (new_control >= 0 && new_control <= 4095) {
+      laser2_control_signal = new_control;
+      analogWrite(pin_output2, (int)laser2_control_signal);
+    }
+
+    laser2_error_signal_prev = laser2_error_signal_current;
+
+    // Diagnostics
+    Serial.print("Error: "); Serial.print(laser2_error_signal_current, 6);
+    Serial.print(" | DAC: "); Serial.println((int)laser2_control_signal);
   }
 
   prev_trigger_state = trigger_now;
+}
 
-  if (!sweep_active) {
-    error2 = (double)t2 - t01;
-    totalT = (double)t02 - t01;
-
-    if (totalT > 0 && totalT < 160000 && error2 < totalT) {
-      alpha2 = error2 / totalT;
-      if (!indicator2 || counter < 3) {
-        laser2_control_signal = 0;
-        control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
-        analogWrite(DAC1, control_output2);
-      } else {
-        laser2_error_signal_current = alpha2_ref - (double)error2 / totalT;
-        delta_laser2 = sign2 * laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev) + sign2 * (laser2_K_i * laser2_error_signal_current);
-        laser2_control_signal += delta_laser2;
-        laser2_error_signal_prev = laser2_error_signal_current;
-        control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
-        analogWrite(DAC1, control_output2);
-      }
+// Savitzky-Golay Peak Finder [3, 4]
+unsigned long peakfinder(int number, unsigned long duration) {
+  if (number < 13) return 0;
+  unsigned long dt = duration / number;
+  int prev_d = 0;
+  for (int j = 6; j < (number - 7); j++) {
+    int current_d = (6 * signalarray[j+6] + 5 * signalarray[j+5] + 4 * signalarray[j+4] + 
+                     3 * signalarray[j+3] + 2 * signalarray[j+2] + signalarray[j+1] - 
+                     signalarray[j-1] - 2 * signalarray[j-2] - 3 * signalarray[j-3] - 
+                     4 * signalarray[j-4] - 5 * signalarray[j-5] - 6 * signalarray[j-6]);
+    if (current_d <= 0 && j > 6) {
+      return (unsigned long)((j + (double)current_d / (prev_d - current_d)) * dt);
     }
-
-    if (counter < 3 || !indicator2) {
-      Serial.println("Not all three peaks found");
-    }
+    prev_d = current_d;
   }
+  return 0;
 }
