@@ -26,7 +26,7 @@ unsigned long period = 50; // timeout period (ms), matched to UneditedCode
 int counter, len, Range;
 double error2, totalT;
 // Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
-bool flag; // [cite: 48]
+bool flag; 
 bool sweep_active = false;
 bool prev_trigger_state = false;
 bool indicator2 = false;
@@ -69,7 +69,6 @@ unsigned long peakfinder(int number, unsigned long duration) {
 }
 
 void loop() {
-  Serial.println("Loop running");
   bool manual_now = (digitalRead(dpin_in) == LOW);
   bool trigger_now = (digitalRead(dpin_out) == LOW);
 
@@ -148,7 +147,8 @@ void loop() {
   }
 
   // Detect second reference peak only after first reference + first slave
-  if (counter == 2 && sample > REF_START_THRESHOLD) {
+  if (counter == 2)
+  Serial.println("Loop running"); && sample > REF_START_THRESHOLD) {
     time_peak = micros();
     int i = 0;
     do {

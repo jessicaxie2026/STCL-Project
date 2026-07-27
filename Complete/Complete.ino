@@ -1,11 +1,11 @@
 // --- Configuration and Thresholds from Source [6] ---
-#define High_threshold1 500    // Reference laser (Big Peaks)
-#define Low_threshold1 400 
-#define High_threshold2 1000   // Slave laser (Small Peaks)
-#define Low_threshold2 700 
+#define High_threshold1 3000    // Reference laser (Big Peaks)
+#define Low_threshold1 2900 
+#define High_threshold2 1500   // Slave laser (Small Peaks)
+#define Low_threshold2 1400 
 
-#define pin_input1 A2          // Photodiode 1 (D2 and 935nm)
-#define pin_input2 A4          // Photodiode 2 (795nm)
+#define pin_input1 A8          // Photodiode 1 (D2 and 935nm)
+#define pin_input2 A8          // Photodiode 2 (795nm)
 #define arraysize 2000
 #define dpin_in 3              // Manual switch
 #define dpin_out 5             // Trigger input
