@@ -1,42 +1,40 @@
-// --- Configuration and Thresholds from Source [6] ---
-#define High_threshold1 3000    // Reference laser (Big Peaks)
-#define Low_threshold1 2900 
-#define High_threshold2 1400    // Slave laser (Small Peaks)
-#define Low_threshold2 1300 
+// --- Configuration and Thresholds ---
+#define High_threshold1 3000
+#define Low_threshold1 2900
+#define High_threshold2 1400
+#define Low_threshold2 1300
 
-#define pin_input1 A8          // Photodiode 1 (D2 and 935nm)
-#define pin_input2 A8          // Photodiode 2 (795nm)
+#define pin_input1 A8
+#define dpin_in 8
+#define dpin_out 12
 #define arraysize 2000
-#define dpin_in 8              // Manual switch
-#define dpin_out 12            // Trigger input
 #define alpha2_ref 0.50
 #define pin_output2 DAC1
 
-// --- Global Variables and PID Parameters from Source [7, 8] ---
-unsigned long t01, t02, t1, t2, start_time, end_time, tstartsweep, time_peak, timenow;
-unsigned long period = 55; 
+// --- Global Variables ---
+unsigned long t01, t02, t2, start_time, time_peak, tstartsweep;
+unsigned long period = 55;
 int signalarray[arraysize];
-int counter, Range;
-double value1, value2;
-float alpha2, error2, totalT;
 bool sweep_active = false;
 bool prev_trigger_state = false;
+int counter = 0;
 
-// PID variables from your original code [8]
+// PID variables
 int sign2 = -1;
-volatile float laser2_K_i = 1;
+volatile float laser2_K_i = 1.0;
 volatile float laser2_K_p = 0.7;
 float laser2_error_signal_current;
 float laser2_error_signal_prev;
 float laser2_control_signal = 0;
+int Range;
+float alpha2, error2, totalT;
 
 void setup() {
   Serial.begin(115200);
-  analogWriteResolution(12);
   analogReadResolution(12);
   pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
-  Range = (pow(2, 12) - 1) - 200; // Original Range calculation [8]
+  Range = (pow(2, 12) - 1) - 200;
   Serial.println("Setup complete");
 }
 
@@ -137,9 +135,12 @@ void loop() {
 
       laser2_error_signal_prev = laser2_error_signal_current;
 
-      Serial.print(t01); Serial.print(", ");
-      Serial.print(t2); Serial.print(", ");
-      Serial.print(t02); Serial.print(", Lock Error: ");
+      Serial.print("t01="); Serial.print(t01);
+      Serial.print(", t2="); Serial.print(t2);
+      Serial.print(", t02="); Serial.print(t02);
+      Serial.print(", Kp="); Serial.print(laser2_K_p, 4);
+      Serial.print(", Ki="); Serial.print(laser2_K_i, 4);
+      Serial.print(", Lock Error: ");
       Serial.println(laser2_error_signal_current, 6);
     } else {
       counter = 0;
@@ -150,19 +151,16 @@ void loop() {
   prev_trigger_state = trigger_now;
 }
 
-// Savitzky-Golay Peak Finder from Source [9]
 unsigned long peakfinder(int number, unsigned long duration) {
   if (number < 13) return 0;
   unsigned long dt = duration / number;
-  int dsignalarray[arraysize];
   int prev_d = 0;
 
   for (int j = 6; j < (number - 7); j++) {
-    int current_d = int((6 * signalarray[j+6] + 5 * signalarray[j+5] + 4 * signalarray[j+4] + 
-                         3 * signalarray[j+3] + 2 * signalarray[j+2] + signalarray[j+1] - 
-                         signalarray[j-1] - 2 * signalarray[j-2] - 3 * signalarray[j-3] - 
-                         4 * signalarray[j-4] - 5 * signalarray[j-5] - 6 * signalarray[j-6]));
-    
+    int current_d = (6 * signalarray[j+6] + 5 * signalarray[j+5] + 4 * signalarray[j+4] +
+                     3 * signalarray[j+3] + 2 * signalarray[j+2] + signalarray[j+1] -
+                     signalarray[j-1] - 2 * signalarray[j-2] - 3 * signalarray[j-3] -
+                     4 * signalarray[j-4] - 5 * signalarray[j-5] - 6 * signalarray[j-6]);
     if (current_d <= 0 && j > 6) {
       return (unsigned long)((j + (double)current_d / (prev_d - current_d)) * dt);
     }
