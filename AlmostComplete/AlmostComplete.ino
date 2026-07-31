@@ -8,8 +8,8 @@
 
 // Thresholds and References
 // Reference peaks are larger and use the higher threshold values.
-#define REF_START_THRESHOLD 3000
-#define REF_END_THRESHOLD 2900
+#define REF_START_THRESHOLD 3600
+#define REF_END_THRESHOLD 3500
 
 // Slave peaks are smaller and use the lower threshold values.
 #define SLAVE_START_THRESHOLD 1400
