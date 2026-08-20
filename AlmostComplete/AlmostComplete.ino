@@ -8,13 +8,8 @@
 
 // Thresholds and References
 // Reference peaks are larger and use the higher threshold values.
-<<<<<<< HEAD
-#define REF_START_THRESHOLD 3600
-#define REF_END_THRESHOLD 3500
-=======
 #define REF_START_THRESHOLD 1250
 #define REF_END_THRESHOLD 1200
->>>>>>> 12a5f31 (cleanup)
 
 // Slave peaks are smaller and use the lower threshold values.
 #define SLAVE_START_THRESHOLD 900
@@ -32,6 +27,8 @@ int counter, len, Range;
 double error2, totalT;
 float offset = 3733.0;
 float error = 0.0;
+const float DAC_MIN_COUNTS = 3.1f / 3.3f * 4095.0f;
+const float DAC_MAX_COUNTS = 3.3f / 3.3f * 4095.0f;
 // Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
 bool flag; 
 bool sweep_active = false;
