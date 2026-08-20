@@ -1,13 +1,7 @@
 // --- Configuration and Thresholds ---
-<<<<<<< HEAD
-// Reference laser (Big Peaks ~4000 counts)
-#define High_threshold1 3600   
-#define Low_threshold1 3500
-=======
 // Reference laser (adjusted for lower amplitude peaks)
 #define High_threshold1 1250
 #define Low_threshold1 1200
->>>>>>> 12a5f31 (cleanup)
 
 // Slave laser (adjusted for lower amplitude peaks)
 #define High_threshold2 900
