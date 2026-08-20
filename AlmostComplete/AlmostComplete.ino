@@ -8,12 +8,17 @@
 
 // Thresholds and References
 // Reference peaks are larger and use the higher threshold values.
+<<<<<<< HEAD
 #define REF_START_THRESHOLD 3600
 #define REF_END_THRESHOLD 3500
+=======
+#define REF_START_THRESHOLD 1250
+#define REF_END_THRESHOLD 1200
+>>>>>>> 12a5f31 (cleanup)
 
 // Slave peaks are smaller and use the lower threshold values.
-#define SLAVE_START_THRESHOLD 1400
-#define SLAVE_END_THRESHOLD 1300
+#define SLAVE_START_THRESHOLD 900
+#define SLAVE_END_THRESHOLD 885
 
 #define alpha1_ref 0.6  
 #define alpha2_ref 0.50
@@ -25,6 +30,8 @@ unsigned long t01, t02, t2, start_time, end_time, time_peak, tstartsweep, timeno
 unsigned long period = 55; // timeout period (ms), matched to TriggerErrorTest
 int counter, len, Range;
 double error2, totalT;
+float offset = 3733.0;
+float error = 0.0;
 // Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
 bool flag; 
 bool sweep_active = false;
@@ -169,8 +176,10 @@ void loop() {
         laser2_control_signal += delta_laser2;
         laser2_error_signal_prev = laser2_error_signal_current;
 
-        float control_output2 = 2072.5 + (Range / 2.0) * laser2_control_signal;
-        analogWrite(pin_output2, (int)control_output2);
+        error = offset + (Range / 2.0) * laser2_control_signal;
+        if (error > DAC_MAX_COUNTS) error = DAC_MAX_COUNTS;
+        if (error < DAC_MIN_COUNTS) error = DAC_MIN_COUNTS;
+        analogWrite(pin_output2, (int)error);
 
         Serial.print(t01); Serial.print(", ");
         Serial.print(t2); Serial.print(", ");

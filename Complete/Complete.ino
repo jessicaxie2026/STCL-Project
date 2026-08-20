@@ -1,8 +1,8 @@
 // --- Configuration and Thresholds from Source [6] ---
-#define High_threshold1 3000    // Reference laser (Big Peaks)
-#define Low_threshold1 2900 
-#define High_threshold2 1400    // Slave laser (Small Peaks)
-#define Low_threshold2 1300 
+#define High_threshold1 1250    // Reference laser (Big Peaks)
+#define Low_threshold1 1200
+#define High_threshold2 900    // Slave laser (Small Peaks)
+#define Low_threshold2 885
 
 #define pin_input1 A8          // Photodiode 1 (D2 and 935nm)
 #define pin_input2 A8          // Photodiode 2 (795nm)
@@ -18,6 +18,8 @@ unsigned long period = 55;
 int signalarray[arraysize];
 int counter, Range;
 double value1, value2;
+float offset = 3733.0;
+float error = 0.0;
 float alpha2, error2, totalT;
 bool sweep_active = false;
 bool prev_trigger_state = false;
@@ -132,7 +134,10 @@ void loop() {
       laser2_control_signal += (sign2 * delta_laser2);
 
       if (laser2_control_signal >= 0 && laser2_control_signal <= Range) {
-        analogWrite(pin_output2, (int)laser2_control_signal);
+        error = offset + (Range / 2.0) * laser2_control_signal;
+        if (error > DAC_MAX_COUNTS) error = DAC_MAX_COUNTS;
+        if (error < DAC_MIN_COUNTS) error = DAC_MIN_COUNTS;
+        analogWrite(pin_output2, (int)error);
       }
 
       laser2_error_signal_prev = laser2_error_signal_current;

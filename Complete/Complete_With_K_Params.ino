@@ -1,8 +1,8 @@
 // --- Configuration and Thresholds ---
-#define High_threshold1 3000
-#define Low_threshold1 2900
-#define High_threshold2 1400
-#define Low_threshold2 1300
+#define High_threshold1 1250
+#define Low_threshold1 1200
+#define High_threshold2 900
+#define Low_threshold2 885
 
 #define pin_input1 A8
 #define dpin_in 8
@@ -26,8 +26,13 @@ volatile float laser2_K_p = 0.7;
 float laser2_error_signal_current;
 float laser2_error_signal_prev;
 float laser2_control_signal = 0;
+float offset = 3733.0;
+float error = 0.0;
 int Range;
 float alpha2, error2, totalT;
+
+const float DAC_MIN_COUNTS = 3.1f / 3.3f * 4095.0f;
+const float DAC_MAX_COUNTS = 3.3f / 3.3f * 4095.0f;
 
 void setup() {
   Serial.begin(115200);
@@ -130,7 +135,10 @@ void loop() {
       laser2_control_signal += (sign2 * delta_laser2);
 
       if (laser2_control_signal >= 0 && laser2_control_signal <= Range) {
-        analogWrite(pin_output2, (int)laser2_control_signal);
+        error = offset + (Range / 2.0) * laser2_control_signal;
+        if (error > DAC_MAX_COUNTS) error = DAC_MAX_COUNTS;
+        if (error < DAC_MIN_COUNTS) error = DAC_MIN_COUNTS;
+        analogWrite(pin_output2, (int)error);
       }
 
       laser2_error_signal_prev = laser2_error_signal_current;

@@ -9,10 +9,10 @@
 #define arraysize 1000
 
 // Thresholds and References
-#define REF_START_THRESHOLD 2900
-#define REF_END_THRESHOLD 2800
-#define SLAVE_START_THRESHOLD 1400
-#define SLAVE_END_THRESHOLD 1300
+#define REF_START_THRESHOLD 1250
+#define REF_END_THRESHOLD 1200
+#define SLAVE_START_THRESHOLD 900
+#define SLAVE_END_THRESHOLD 885
 #define alpha1_ref 0.6
 #define alpha2_ref 0.50
 
@@ -28,6 +28,9 @@ unsigned long period = 50; // timeout period (ms), matched to UneditedCode
 int counter, len, Range;
 double error2, totalT;
 bool flag;
+
+const float DAC_MIN_COUNTS = 3.1f / 3.3f * 4095.0f;
+const float DAC_MAX_COUNTS = 3.3f / 3.3f * 4095.0f;
 
 // Global Variables - PID Control
 int sign2 = -1;
@@ -205,6 +208,8 @@ void loop() {
         laser2_error_signal_prev = laser2_error_signal_current;
 
         float control_output2 = 2072.5 + (Range / 2.0) * laser2_control_signal;
+        if (control_output2 > DAC_MAX_COUNTS) control_output2 = DAC_MAX_COUNTS;
+        if (control_output2 < DAC_MIN_COUNTS) control_output2 = DAC_MIN_COUNTS;
         analogWrite(pin_output2, (int)control_output2);
       }
     }

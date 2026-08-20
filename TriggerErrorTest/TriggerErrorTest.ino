@@ -1,11 +1,17 @@
 // --- Configuration and Thresholds ---
+<<<<<<< HEAD
 // Reference laser (Big Peaks ~4000 counts)
 #define High_threshold1 3600   
 #define Low_threshold1 3500
+=======
+// Reference laser (adjusted for lower amplitude peaks)
+#define High_threshold1 1250
+#define Low_threshold1 1200
+>>>>>>> 12a5f31 (cleanup)
 
-// Slave laser (Small Peaks ~2400 counts)
-#define High_threshold2 1400   
-#define Low_threshold2 1300
+// Slave laser (adjusted for lower amplitude peaks)
+#define High_threshold2 900
+#define Low_threshold2 885
 
 #define pin_input1 A8 
 #define dpin_in 8       // Manual lock switch
@@ -15,7 +21,7 @@
 
 // --- Global Variables ---
 unsigned long t01, t02, t2, start_time, time_peak, tstartsweep;
-unsigned long period = 55; // 55ms safety margin for 20Hz (50ms) ramp
+unsigned long period = 100; // 55ms safety margin for 20Hz (50ms) ramp
 int signalarray[arraysize];
 bool sweep_active = false;
 bool prev_trigger_state = false;
@@ -53,7 +59,12 @@ void loop() {
 
   // Safety Timeout: Reset if sweep takes too long
   if (millis() - tstartsweep > period) {
+    if (counter == 0) Serial.println("Missing peak: reference peak 1");
+    else if (counter == 1) Serial.println("Missing peak: slave peak");
+    else if (counter == 3) Serial.println("Missing peak: reference peak 2");
+    else Serial.println("Missing peak: unknown peak");
     sweep_active = false;
+    counter = 0;
     return;
   }
 
@@ -91,6 +102,10 @@ void loop() {
       
       t2 = current_offset + peakfinder(i, micros() - time_peak);
       counter++;
+    } else {
+      Serial.println("Missing peak: slave peak");
+      sweep_active = false;
+      counter = 0;
     }
   }
 
@@ -115,6 +130,10 @@ void loop() {
     
     t02 = time_peak - start_time + peakfinder(i, micros() - time_peak);
     counter++;
+  } else if (counter == 3) {
+    Serial.println("Missing peak: reference peak 2");
+    sweep_active = false;
+    counter = 0;
   }
 
   // --- VALIDATION AND OUTPUT ---
@@ -133,7 +152,7 @@ void loop() {
     } else {
       // Discard glitchy sweep
       counter = 0;
-      Serial.println("Glitchy sequence");
+      Serial.println("Missing peak: invalid sequence");
     }
   }
 

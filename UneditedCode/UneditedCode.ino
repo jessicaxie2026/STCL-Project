@@ -1,9 +1,9 @@
 int random_variable;
 int static_variable = 500;
-#define REF_START_THRESHOLD 2900 // Reference peak start threshold
-#define REF_END_THRESHOLD 2800 // Reference peak end threshold
-#define SLAVE_START_THRESHOLD 1400 // Slave peak start threshold
-#define SLAVE_END_THRESHOLD 1300 // Slave peak end threshold
+#define REF_START_THRESHOLD 1250 // Reference peak start threshold
+#define REF_END_THRESHOLD 1200 // Reference peak end threshold
+#define SLAVE_START_THRESHOLD 900 // Slave peak start threshold
+#define SLAVE_END_THRESHOLD 885 // Slave peak end threshold
 #define pin_input1 A8 //single peak signal input
 #define pin_input2 A8 //single peak signal input (same source for compatibility)
 #define arraysize 2000 //size of the array for storing the data of the peaks
@@ -151,14 +151,12 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
       // 4. Convert math signal to DAC voltage (Centered at 2072.5)
       control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
 
-      // 5. SAFETY CLAMPING: Prevent the signal from going out of 12-bit bounds (0-4095)
-      // This protects the DBR from current spikes if the peak is briefly lost
-      if (control_output2 > 4095) {
-          control_output2 = 4095;
-          // Optional: laser2_control_signal -= delta_laser2; // Anti-windup adjustment
-      } 
-      if (control_output2 < 0) {
-          control_output2 = 0;
+      // 5. SAFETY CLAMPING: Keep the DAC output within the 3.1 V to 3.3 V operating band.
+      if (control_output2 > 3.3 / 3.3 * 4095.0) {
+          control_output2 = 3.3 / 3.3 * 4095.0;
+      }
+      if (control_output2 < 3.1 / 3.3 * 4095.0) {
+          control_output2 = 3.1 / 3.3 * 4095.0;
       }
 
       // 6. Write the physical adjustment to the DBR current driver

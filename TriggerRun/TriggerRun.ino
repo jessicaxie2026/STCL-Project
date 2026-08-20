@@ -1,7 +1,7 @@
 //shows raw data with trigger and sg filter
 
-#define REF_START_THRESHOLD 2900
-#define REF_END_THRESHOLD 2800
+#define REF_START_THRESHOLD 1250
+#define REF_END_THRESHOLD 1200
 #define pin_input1 A8
 #define arraysize 2000
 #define dpin_in 3
