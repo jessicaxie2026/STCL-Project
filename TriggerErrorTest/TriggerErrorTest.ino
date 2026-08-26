@@ -1,16 +1,16 @@
 // --- Configuration and Thresholds ---
 // Reference laser (adjusted for lower amplitude peaks)
-#define High_threshold1 1250
-#define Low_threshold1 1200
+#define High_threshold1 1790
+#define Low_threshold1 1790
 
 // Slave laser (adjusted for lower amplitude peaks)
-#define High_threshold2 900
-#define Low_threshold2 885
+#define High_threshold2 915
+#define Low_threshold2 930
 
-#define pin_input1 A8 
+#define pin_input1 A4
 #define dpin_in 8       // Manual lock switch
-#define dpin_out 12     // Trigger input from Function Gen
-#define arraysize 2000
+#define dpin_out 11     // Trigger input from Function Gen
+#define arraysize 150
 #define alpha2_ref 0.50
 
 // --- Global Variables ---
@@ -104,14 +104,14 @@ void loop() {
   }
 
   // PEAK 2: Second Small Peak (SKIP)
-  else if (counter == 2 && sample > High_threshold2) {
-    int i = 0;
-    do {
-      sample = analogRead(pin_input1);
-    } while (sample > Low_threshold2 && i < arraysize);
-    counter++; 
-  }
-
+else if (counter == 2 && sample > High_threshold2) {
+  int i = 0;
+  do {
+    sample = analogRead(pin_input1);
+    i++; // <--- ADD THIS LINE TO PREVENT THE INFINITE LOOP
+  } while (sample > Low_threshold2 && i < arraysize);
+  counter++;
+}
   // PEAK 3: Second Big Peak (Master 2)
   else if (counter == 3 && sample > High_threshold1) {
     time_peak = micros();
@@ -124,12 +124,7 @@ void loop() {
     
     t02 = time_peak - start_time + peakfinder(i, micros() - time_peak);
     counter++;
-  } else if (counter == 3) {
-    Serial.println("Missing peak: reference peak 2");
-    sweep_active = false;
-    counter = 0;
-  }
-
+  } 
   // --- VALIDATION AND OUTPUT ---
   if (counter >= 4) {
     sweep_active = false;

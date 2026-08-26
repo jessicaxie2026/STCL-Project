@@ -25,7 +25,7 @@ unsigned long t01, t02, t2, start_time, end_time, time_peak, tstartsweep, timeno
 unsigned long period = 55; // timeout period (ms), matched to TriggerErrorTest
 int counter, len, Range;
 double error2, totalT;
-float offset = 3733.0;
+float offset = 3295.0;
 float error = 0.0;
 const float DAC_MIN_COUNTS = 3.1f / 3.3f * 4095.0f;
 const float DAC_MAX_COUNTS = 3.3f / 3.3f * 4095.0f;
@@ -51,7 +51,7 @@ void setup() {
   pinMode(dpin_out, INPUT);
   // trigger read via dpin_out per TriggerCheck mapping
   
-  Range = (pow(2, 12) - 1) - 200;
+  Range = 800;
   Serial.println("Setup complete");
 }
 
