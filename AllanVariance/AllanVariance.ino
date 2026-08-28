@@ -29,8 +29,24 @@ int counter, len, Range;
 double error2, totalT;
 bool flag;
 
-const float DAC_MIN_COUNTS = 3.1f / 3.3f * 4095.0f;
-const float DAC_MAX_COUNTS = 3.3f / 3.3f * 4095.0f;
+const float DAC_MIN_COUNTS = 1150.0f;
+const float DAC_MAX_COUNTS = 4095.0f;
+const float DAC_OFFSET_V = 3.175f;
+const float DAC_FULL_SCALE_V = 3.500f;
+const float DAC_3V3_COUNTS = 1150.0f;
+const float DAC_3V4_COUNTS = 2288.0f;
+
+static inline float clampDACValue(float value) {
+  if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;
+  if (value < DAC_MIN_COUNTS) return DAC_MIN_COUNTS;
+  return value;
+}
+
+static inline float clampControlSignal(float value, float limit) {
+  if (value > limit) return limit;
+  if (value < 0.0f) return 0.0f;
+  return value;
+}
 
 // Global Variables - PID Control
 int sign2 = -1;
@@ -207,10 +223,16 @@ void loop() {
         laser2_control_signal += delta_laser2;
         laser2_error_signal_prev = laser2_error_signal_current;
 
+        if (laser2_control_signal > Range) {
+          laser2_control_signal = (float)Range;
+        }
+        if (laser2_control_signal < 0.0f) {
+          laser2_control_signal = 0.0f;
+        }
+
         float control_output2 = 2072.5 + (Range / 2.0) * laser2_control_signal;
-        if (control_output2 > DAC_MAX_COUNTS) control_output2 = DAC_MAX_COUNTS;
-        if (control_output2 < DAC_MIN_COUNTS) control_output2 = DAC_MIN_COUNTS;
-        analogWrite(pin_output2, (int)control_output2);
+        float clamped_control_output = clampDACValue(control_output2);
+        analogWrite(pin_output2, (int)clamped_control_output);
       }
     }
   } else {

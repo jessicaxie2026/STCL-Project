@@ -27,8 +27,24 @@ int counter, len, Range;
 double error2, totalT;
 float offset = 3295.0;
 float error = 0.0;
-const float DAC_MIN_COUNTS = 3.1f / 3.3f * 4095.0f;
-const float DAC_MAX_COUNTS = 3.3f / 3.3f * 4095.0f;
+const float DAC_MIN_COUNTS = 1150.0f;
+const float DAC_MAX_COUNTS = 4095.0f;
+const float DAC_OFFSET_V = 3.175f;
+const float DAC_FULL_SCALE_V = 3.500f;
+const float DAC_3V3_COUNTS = 1150.0f;
+const float DAC_3V4_COUNTS = 2288.0f;
+
+static inline float clampDACValue(float value) {
+  if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;
+  if (value < DAC_MIN_COUNTS) return DAC_MIN_COUNTS;
+  return value;
+}
+
+static inline float clampControlSignal(float value, float limit) {
+  if (value > limit) return limit;
+  if (value < 0.0f) return 0.0f;
+  return value;
+}
 // Using TriggerCheck-style polling: dpin_in acts as lock (INPUT_PULLUP)
 bool flag; 
 bool sweep_active = false;
@@ -171,12 +187,12 @@ void loop() {
         float delta_laser2 = sign2 * laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev) + 
                              sign2 * (laser2_K_i * laser2_error_signal_current);
         laser2_control_signal += delta_laser2;
+        laser2_control_signal = clampControlSignal(laser2_control_signal, (float)Range);
         laser2_error_signal_prev = laser2_error_signal_current;
 
         error = offset + (Range / 2.0) * laser2_control_signal;
-        if (error > DAC_MAX_COUNTS) error = DAC_MAX_COUNTS;
-        if (error < DAC_MIN_COUNTS) error = DAC_MIN_COUNTS;
-        analogWrite(pin_output2, (int)error);
+        float clamped_error = clampDACValue(error);
+        analogWrite(pin_output2, (int)clamped_error);
 
         Serial.print(t01); Serial.print(", ");
         Serial.print(t2); Serial.print(", ");

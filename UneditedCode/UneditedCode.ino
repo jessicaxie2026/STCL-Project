@@ -23,6 +23,25 @@ bool trigger, flag = HIGH;//Flag is for detecting the position of the peak.
 bool indicator2 = LOW; //indicator is for indicating the presence of the 795 peak
 bool lock;
 
+const float DAC_MIN_COUNTS = 1150.0f;
+const float DAC_MAX_COUNTS = 4095.0f;
+const float DAC_OFFSET_V = 3.175f;
+const float DAC_FULL_SCALE_V = 3.500f;
+const float DAC_3V3_COUNTS = 1150.0f;
+const float DAC_3V4_COUNTS = 2288.0f;
+
+static inline float clampDACValue(float value) {
+  if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;
+  if (value < DAC_MIN_COUNTS) return DAC_MIN_COUNTS;
+  return value;
+}
+
+static inline float clampControlSignal(float value, float limit) {
+  if (value > limit) return limit;
+  if (value < 0.0f) return 0.0f;
+  return value;
+}
+
 //---------------------------------------------R-
 //Define Servo Loop Variables for 795nm feedback
 int sign2 = -1; //define the sign of PID parameters. 1 is positive and -1 is negative.
@@ -130,7 +149,8 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
     if (indicator2 == LOW || counter < 2) { //if there is no third peak, do not apply lock.
       laser2_control_signal = 0;
       control_output2 = (double)650 + Range / 2.0 * laser2_control_signal;
-      analogWrite(DAC0, control_output2);
+      float clamped_no_peak = clampDACValue(control_output2);
+      analogWrite(DAC0, (int)clamped_no_peak);
       Serial.println("No third peak");
     }
     else { //if there is the third peak, apply lock.
@@ -147,20 +167,21 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
       
       // 3. Update the cumulative control signal
       laser2_control_signal += delta_laser2;
+      if (laser2_control_signal > Range) {
+        laser2_control_signal = (float)Range;
+      }
+      if (laser2_control_signal < 0.0f) {
+        laser2_control_signal = 0.0f;
+      }
       
       // 4. Convert math signal to DAC voltage (Centered at 2072.5)
       control_output2 = (double)2072.5 + Range / 2.0 * laser2_control_signal;
 
-      // 5. SAFETY CLAMPING: Keep the DAC output within the 3.1 V to 3.3 V operating band.
-      if (control_output2 > 3.3 / 3.3 * 4095.0) {
-          control_output2 = 3.3 / 3.3 * 4095.0;
-      }
-      if (control_output2 < 3.1 / 3.3 * 4095.0) {
-          control_output2 = 3.1 / 3.3 * 4095.0;
-      }
+      // 5. SAFETY CLAMPING: Keep the DAC output within the 0 to 4095 count operating band.
+      float clamped_control_output = clampDACValue(control_output2);
 
       // 6. Write the physical adjustment to the DBR current driver
-      analogWrite(DAC1, control_output2);
+      analogWrite(DAC1, (int)clamped_control_output);
 
       // Store the current error to use as 'previous' in the next iteration
       laser2_error_signal_prev = laser2_error_signal_current;
@@ -174,7 +195,8 @@ if (totalT > 0 && totalT < 160000 && error2 < totalT) {
   else {
     Serial.println("Lock disengaged");
     control_output2 = (double)2072.5;
-    analogWrite(DAC1, control_output2);
+    float disengaged_output = clampDACValue(control_output2);
+    analogWrite(DAC1, (int)disengaged_output);
   }
 }
 //Serial.println("delt");
