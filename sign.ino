@@ -10,6 +10,7 @@
 
 int output = 2288;
 int signalarray[arraysize];
+bool running = false;
 
 unsigned long t01 = 0;
 unsigned long t2 = 0;
@@ -25,11 +26,31 @@ void setup() {
   analogWrite(pin_output, output);
 
   Serial.println("Sign test: write output, then print peak-system error.");
+  Serial.println("Press 's' to start, 'q' to stop");
 }
 
 void loop() {
   static unsigned long lastStepMs = 0;
   static bool firstPass = true;
+
+  // Check for serial commands
+  if (Serial.available()) {
+    char cmd = Serial.read();
+    if (cmd == 's' || cmd == 'S') {
+      running = true;
+      firstPass = true;
+      Serial.println("Test started");
+    }
+    if (cmd == 'q' || cmd == 'Q') {
+      running = false;
+      Serial.println("Test stopped");
+    }
+  }
+
+  if (!running) {
+    delay(100);
+    return;
+  }
 
   if (firstPass) {
     firstPass = false;
@@ -39,7 +60,7 @@ void loop() {
   if (millis() - lastStepMs >= 5000UL) {
     output += 13;
     if (output > 4095) {
-      output = 1150;
+      output = 4095;
     }
     lastStepMs = millis();
     Serial.print("New output = ");
