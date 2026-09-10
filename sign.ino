@@ -2,13 +2,13 @@
 #define pin_output DAC0
 
 #define REF_START_THRESHOLD 1250
-#define REF_END_THRESHOLD 1200
-#define SLAVE_START_THRESHOLD 900
-#define SLAVE_END_THRESHOLD 885
+#define REF_END_THRESHOLD 950
+#define SLAVE_START_THRESHOLD 800
+#define SLAVE_END_THRESHOLD 750
 #define alpha2_ref 0.50
 #define arraysize 2000
 
-int output = 2288;
+int output = 2600;
 int signalarray[arraysize];
 bool running = false;
 
@@ -58,7 +58,7 @@ void loop() {
   }
 
   if (millis() - lastStepMs >= 5000UL) {
-    output += 13;
+    output += 11;
     if (output > 4095) {
       output = 4095;
     }

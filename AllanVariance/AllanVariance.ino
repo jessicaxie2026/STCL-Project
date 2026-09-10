@@ -10,9 +10,9 @@
 
 // Thresholds and References
 #define REF_START_THRESHOLD 1250
-#define REF_END_THRESHOLD 1200
-#define SLAVE_START_THRESHOLD 900
-#define SLAVE_END_THRESHOLD 885
+#define REF_END_THRESHOLD 950
+#define SLAVE_START_THRESHOLD 800
+#define SLAVE_END_THRESHOLD 750
 #define alpha1_ref 0.6
 #define alpha2_ref 0.50
 
@@ -33,8 +33,8 @@ const float DAC_MIN_COUNTS = 1150.0f;
 const float DAC_MAX_COUNTS = 4095.0f;
 const float DAC_OFFSET_V = 3.175f;
 const float DAC_FULL_SCALE_V = 3.500f;
-const float DAC_3V3_COUNTS = 1150.0f;
-const float DAC_3V4_COUNTS = 2288.0f;
+const float DAC_3V3_COUNTS = 1500.0f;
+const float DAC_3V4_COUNTS = 2600.0f;
 
 static inline float clampDACValue(float value) {
   if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;

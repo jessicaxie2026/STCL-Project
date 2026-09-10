@@ -1,9 +1,9 @@
 int random_variable;
 int static_variable = 500;
 #define REF_START_THRESHOLD 1250 // Reference peak start threshold
-#define REF_END_THRESHOLD 1200 // Reference peak end threshold
-#define SLAVE_START_THRESHOLD 900 // Slave peak start threshold
-#define SLAVE_END_THRESHOLD 885 // Slave peak end threshold
+#define REF_END_THRESHOLD 950 // Reference peak end threshold
+#define SLAVE_START_THRESHOLD 800 // Slave peak start threshold
+#define SLAVE_END_THRESHOLD 750 // Slave peak end threshold
 #define pin_input1 A8 //single peak signal input
 #define pin_input2 A8 //single peak signal input (same source for compatibility)
 #define arraysize 2000 //size of the array for storing the data of the peaks
@@ -27,8 +27,8 @@ const float DAC_MIN_COUNTS = 1150.0f;
 const float DAC_MAX_COUNTS = 4095.0f;
 const float DAC_OFFSET_V = 3.175f;
 const float DAC_FULL_SCALE_V = 3.500f;
-const float DAC_3V3_COUNTS = 1150.0f;
-const float DAC_3V4_COUNTS = 2288.0f;
+const float DAC_3V3_COUNTS = 1500.0f;
+const float DAC_3V4_COUNTS = 2600.0f;
 
 static inline float clampDACValue(float value) {
   if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;

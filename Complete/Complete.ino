@@ -1,8 +1,8 @@
 // --- Configuration and Thresholds from Source [6] ---
 #define High_threshold1 1250    // Reference laser (Big Peaks)
-#define Low_threshold1 1200
-#define High_threshold2 900    // Slave laser (Small Peaks)
-#define Low_threshold2 885
+#define Low_threshold1 950
+#define High_threshold2 800    // Slave laser (Small Peaks)
+#define Low_threshold2 750
 
 #define pin_input1 A8          // Photodiode 1 (D2 and 935nm)
 #define pin_input2 A8          // Photodiode 2 (795nm)
@@ -28,8 +28,8 @@ const float DAC_MIN_COUNTS = 1150.0f;
 const float DAC_MAX_COUNTS = 4095.0f;
 const float DAC_OFFSET_V = 3.175f;
 const float DAC_FULL_SCALE_V = 3.500f;
-const float DAC_3V3_COUNTS = 1150.0f;
-const float DAC_3V4_COUNTS = 2288.0f;
+const float DAC_3V3_COUNTS = 1500.0f;
+const float DAC_3V4_COUNTS = 2600.0f;
 
 static inline float clampDACValue(float value) {
   if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;
