@@ -8,7 +8,7 @@
 #define alpha2_ref 0.50
 #define arraysize 2000
 
-int output = 2600;
+int output = 2800;
 int signalarray[arraysize];
 bool running = false;
 
@@ -22,7 +22,7 @@ void setup() {
   analogReadResolution(12);
   pinMode(pin_output, OUTPUT);
 
-  output = constrain(output, 1150, 4095);
+  output = constrain(output, 2400, 3200);
   analogWrite(pin_output, output);
 
   Serial.println("Sign test: write output, then print peak-system error.");
@@ -58,16 +58,16 @@ void loop() {
   }
 
   if (millis() - lastStepMs >= 5000UL) {
-    output += 13;
-    if (output > 4095) {
-      output = 4095;
+    output += 4;
+    if (output > 3200) {
+      output = 3200;
     }
     lastStepMs = millis();
     Serial.print("New output = ");
     Serial.println(output);
   }
 
-  int writeValue = constrain(output, 1150, 4095);
+int writeValue = constrain(output, 2400, 3200);
   analogWrite(pin_output, writeValue);
 
   double error = measurePeakError();
@@ -86,15 +86,19 @@ void loop() {
   delay(100);
 }
 
+static void resetSweepState() {
+  t01 = 0;
+  t2 = 0;
+  t02 = 0;
+}
+
 double measurePeakError() {
   unsigned long sweepStart = micros();
   unsigned long sweepTimeout = millis() + 200;
   int counter = 0;
   int sample = 0;
 
-  t01 = 0;
-  t2 = 0;
-  t02 = 0;
+  resetSweepState();
 
   while (millis() < sweepTimeout) {
     sample = analogRead(pin_input1);
@@ -127,14 +131,17 @@ double measurePeakError() {
       continue;
     }
 
-    if (counter == 2 && sample > SLAVE_START_THRESHOLD && sample < REF_START_THRESHOLD) {
+    else if (counter == 2 && sample > SLAVE_START_THRESHOLD) {
+      int i = 0;
       do {
         sample = analogRead(pin_input1);
-      } while (sample > SLAVE_END_THRESHOLD && sample > 0);
+        i++;
+      } while (sample > SLAVE_END_THRESHOLD && i < arraysize);
+      counter = 3;
       continue;
     }
 
-    if (counter == 2 && sample > REF_START_THRESHOLD) {
+    else if (counter == 3 && sample > REF_START_THRESHOLD) {
       unsigned long time_peak = micros();
       int i = 0;
       do {
@@ -148,11 +155,29 @@ double measurePeakError() {
     }
   }
 
+  if (t01 == 0 || t02 == 0 || t2 == 0) {
+    Serial.print("DEBUG invalid sweep: t01=");
+    Serial.print(t01);
+    Serial.print(", t2=");
+    Serial.print(t2);
+    Serial.print(", t02=");
+    Serial.println(t02);
+    resetSweepState();
+    return 9999.0;
+  }
+
   if (t2 > t01 && t2 < t02 && t02 > t01) {
     double alpha2 = (double)(t2 - t01) / (double)(t02 - t01);
     return alpha2_ref - alpha2;
   }
 
+  Serial.print("DEBUG invalid timing: t01=");
+  Serial.print(t01);
+  Serial.print(", t2=");
+  Serial.print(t2);
+  Serial.print(", t02=");
+  Serial.println(t02);
+  resetSweepState();
   return 9999.0;
 }
 

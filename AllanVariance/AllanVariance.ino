@@ -29,8 +29,8 @@ int counter, len, Range;
 double error2, totalT;
 bool flag;
 
-const float DAC_MIN_COUNTS = 1150.0f;
-const float DAC_MAX_COUNTS = 4095.0f;
+const float DAC_MIN_COUNTS = 2400.0f;
+const float DAC_MAX_COUNTS = 3200.0f;
 const float DAC_OFFSET_V = 3.175f;
 const float DAC_FULL_SCALE_V = 3.500f;
 const float DAC_3V3_COUNTS = 1500.0f;
