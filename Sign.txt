@@ -1,0 +1,196 @@
+DEBUG invalid sweep: t01=72, t2=0, t02=0
+ Error: 9999.000000
+DEBUG invalid sweep: t01=88, t2=0, t02=0
+output = 2912  alpha2 = N/A  Lock Error: 9999.000000
+= N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=88, t2=0, t02=0
+output = 2912  alpha2 = N/A  Lock Error: 9999.000000
+Sign test: write output, then print peak-system error.
+Press 's' to start, 'q' to stop
+Test started
+DEBUG invalid sweep: t01=123, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=74, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=73, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=70, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=72, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=68, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=82, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=85, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=70, t2=0, t02=0
+output = 2800  alpha2 = N/A  Lock Error: 9999.000000
+New output = 2804
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=103, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=75, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=101, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=102, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=71, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=72, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=71, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=71, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=71, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=75, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2804  alpha2 = N/A  Lock Error: 9999.000000
+New output = 2808
+DEBUG invalid sweep: t01=75, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=70, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=90, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=103, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=94, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=72, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=76, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=104, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=71, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=85, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=97, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=104, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=74, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=70, t2=0, t02=0
+output = 2808  alpha2 = N/A  Lock Error: 9999.000000
+New output = 2812
+DEBUG invalid sweep: t01=78, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=82, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=71, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=90, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=90, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=71, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=75, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=72, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=72, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=82, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=102, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=70, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=71, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=73, t2=0, t02=0
+output = 2812  alpha2 = N/A  Lock Error: 9999.000000
+New output = 2816
+DEBUG invalid sweep: t01=80, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=72, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=83, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=104, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=70, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=76, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=82, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=81, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=82, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=64, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=72, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=76, t2=0, t02=0
+output = 2816  alpha2 = N/A  Lock Error: 9999.000000
+New output = 2820
+DEBUG invalid sweep: t01=77, t2=0, t02=0
+output = 2820  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=74, t2=0, t02=0
+output = 2820  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2820  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2820  alpha2 = N/A  Lock Error: 9999.000000
+DEBUG invalid sweep: t01=84, t2=0, t02=0
+output = 2820  alpha2 = N/A  Lock Error: 9999.000000
+Test stopped

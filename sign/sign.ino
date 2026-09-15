@@ -1,26 +1,38 @@
-#define pin_input1 A8
+// --- Configuration and Thresholds ---
+#define High_threshold1 1250
+#define Low_threshold1 1150
+#define High_threshold2 875
+#define Low_threshold2 850
+
+#define pin_input1 A4
 #define pin_output DAC0
-
-#define REF_START_THRESHOLD 1250
-#define REF_END_THRESHOLD 1200
-#define SLAVE_START_THRESHOLD 900
-#define SLAVE_END_THRESHOLD 885
+#define dpin_in 8
+#define dpin_out 11
+#define arraysize 150
 #define alpha2_ref 0.50
-#define arraysize 2000
 
+// --- Global Variables ---
 int output = 2800;
 int signalarray[arraysize];
 bool running = false;
-
 unsigned long t01 = 0;
-unsigned long t2 = 0;
 unsigned long t02 = 0;
+unsigned long t2 = 0;
+unsigned long start_time = 0;
+unsigned long time_peak = 0;
+unsigned long tstartsweep = 0;
+unsigned long period = 100;
+bool sweep_active = false;
+bool prev_trigger_state = false;
+int counter = 0;
 
 void setup() {
   Serial.begin(115200);
   analogWriteResolution(12);
   analogReadResolution(12);
   pinMode(pin_output, OUTPUT);
+  pinMode(dpin_in, INPUT_PULLUP);
+  pinMode(dpin_out, INPUT);
 
   output = constrain(output, 2400, 3200);
   analogWrite(pin_output, output);
@@ -33,7 +45,6 @@ void loop() {
   static unsigned long lastStepMs = 0;
   static bool firstPass = true;
 
-  // Check for serial commands
   if (Serial.available()) {
     char cmd = Serial.read();
     if (cmd == 's' || cmd == 'S') {
@@ -48,7 +59,6 @@ void loop() {
   }
 
   if (!running) {
-    delay(100);
     return;
   }
 
@@ -67,136 +77,134 @@ void loop() {
     Serial.println(output);
   }
 
-int writeValue = constrain(output, 2400, 3200);
+  int writeValue = constrain(output, 2400, 3200);
   analogWrite(pin_output, writeValue);
 
-  double error = measurePeakError();
+  bool manual_now = (digitalRead(dpin_in) == LOW);
+  bool trigger_now = (digitalRead(dpin_out) == LOW);
 
-  Serial.print("output = ");
-  Serial.print(writeValue);
-  Serial.print("  alpha2 = ");
-  if (t02 > t01) {
-    Serial.print((double)(t2 - t01) / (double)(t02 - t01), 6);
-  } else {
-    Serial.print("N/A");
+  if (!manual_now) {
+    sweep_active = false;
+    counter = 0;
+    prev_trigger_state = trigger_now;
+    return;
   }
-  Serial.print("  Lock Error: ");
-  Serial.println(error, 6);
 
-  delay(100);
-}
+  if (!sweep_active) {
+    if (!prev_trigger_state && trigger_now) {
+      start_time = micros();
+      tstartsweep = millis();
+      counter = 0;
+      t01 = 0;
+      t2 = 0;
+      t02 = 0;
+      sweep_active = true;
+    }
+    prev_trigger_state = trigger_now;
+    return;
+  }
 
-static void resetSweepState() {
-  t01 = 0;
-  t2 = 0;
-  t02 = 0;
-}
-
-double measurePeakError() {
-  unsigned long sweepStart = micros();
-  unsigned long sweepTimeout = millis() + 200;
-  int counter = 0;
   int sample = 0;
-
-  resetSweepState();
-
-  while (millis() < sweepTimeout) {
+  double error = 9999.0;
+  if (millis() - tstartsweep > period) {
+    if (counter == 0) Serial.println("Missing peak: reference peak 1");
+    else if (counter == 1) Serial.println("Missing peak: slave peak");
+    else if (counter == 3) Serial.println("Missing peak: reference peak 2");
+    else Serial.println("Missing peak: unknown peak");
+    sweep_active = false;
+    counter = 0;
+  } else {
     sample = analogRead(pin_input1);
 
-    if (counter == 0 && sample > REF_START_THRESHOLD) {
-      unsigned long time_peak = micros();
+    if (counter == 0 && sample > High_threshold1) {
+      time_peak = micros();
       int i = 0;
       do {
-        signalarray[i] = sample;
+        if (i < arraysize) signalarray[i] = sample;
         sample = analogRead(pin_input1);
         i++;
-      } while (sample > REF_END_THRESHOLD && i < arraysize);
-
-      t01 = time_peak - sweepStart + peakfinder(i, micros() - time_peak);
-      counter = 1;
-      continue;
+      } while (sample > Low_threshold1 && i < arraysize);
+      t01 = time_peak - start_time + peakfinder(i, micros() - time_peak);
+      counter++;
     }
 
-    if (counter == 1 && sample > SLAVE_START_THRESHOLD && sample < REF_START_THRESHOLD) {
-      unsigned long time_peak = micros();
-      int i = 0;
-      do {
-        signalarray[i] = sample;
-        sample = analogRead(pin_input1);
-        i++;
-      } while (sample > SLAVE_END_THRESHOLD && i < arraysize);
-
-      t2 = time_peak - sweepStart + peakfinder(i, micros() - time_peak);
-      counter = 2;
-      continue;
+    else if (counter == 1 && sample > High_threshold2) {
+      time_peak = micros();
+      unsigned long current_offset = time_peak - start_time;
+      if (current_offset > t01 && (current_offset - t01) < 10000) {
+        int i = 0;
+        do {
+          if (i < arraysize) signalarray[i] = sample;
+          sample = analogRead(pin_input1);
+          i++;
+        } while (sample > Low_threshold2 && i < arraysize);
+        t2 = current_offset + peakfinder(i, micros() - time_peak);
+        counter++;
+      } else {
+        Serial.println("Missing peak: slave peak");
+        sweep_active = false;
+        counter = 0;
+      }
     }
 
-    else if (counter == 2 && sample > SLAVE_START_THRESHOLD) {
+    else if (counter == 2 && sample > High_threshold2) {
       int i = 0;
       do {
         sample = analogRead(pin_input1);
         i++;
-      } while (sample > SLAVE_END_THRESHOLD && i < arraysize);
-      counter = 3;
-      continue;
+      } while (sample > Low_threshold2 && i < arraysize);
+      counter++;
     }
 
-    else if (counter == 3 && sample > REF_START_THRESHOLD) {
-      unsigned long time_peak = micros();
+    else if (counter == 3 && sample > High_threshold1) {
+      time_peak = micros();
       int i = 0;
       do {
-        signalarray[i] = sample;
+        if (i < arraysize) signalarray[i] = sample;
         sample = analogRead(pin_input1);
         i++;
-      } while (sample > REF_END_THRESHOLD && i < arraysize);
-
-      t02 = time_peak - sweepStart + peakfinder(i, micros() - time_peak);
-      break;
+      } while (sample > Low_threshold1 && i < arraysize);
+      t02 = time_peak - start_time + peakfinder(i, micros() - time_peak);
+      sweep_active = false;
+      counter++;
     }
   }
 
-  if (t01 == 0 || t02 == 0 || t2 == 0) {
-    Serial.print("DEBUG invalid sweep: t01=");
-    Serial.print(t01);
-    Serial.print(", t2=");
-    Serial.print(t2);
-    Serial.print(", t02=");
-    Serial.println(t02);
-    resetSweepState();
-    return 9999.0;
-  }
-
-  if (t2 > t01 && t2 < t02 && t02 > t01) {
+  if (!sweep_active && t01 != 0 && t2 != 0 && t02 != 0 && t2 > t01 && t2 < t02) {
     double alpha2 = (double)(t2 - t01) / (double)(t02 - t01);
-    return alpha2_ref - alpha2;
+    error = alpha2_ref - alpha2;
   }
 
-  Serial.print("DEBUG invalid timing: t01=");
-  Serial.print(t01);
-  Serial.print(", t2=");
-  Serial.print(t2);
-  Serial.print(", t02=");
-  Serial.println(t02);
-  resetSweepState();
-  return 9999.0;
+  if (!sweep_active) {
+    Serial.print("output = ");
+    Serial.print(writeValue);
+    Serial.print("  alpha2 = ");
+    if (t02 > t01) {
+      Serial.print((double)(t2 - t01) / (double)(t02 - t01), 6);
+    } else {
+      Serial.print("N/A");
+    }
+    Serial.print("  Lock Error: ");
+    Serial.println(error, 6);
+  }
+
+  prev_trigger_state = trigger_now;
 }
 
 unsigned long peakfinder(int number, unsigned long duration) {
   if (number < 13) return 0;
   unsigned long dt = duration / number;
   int prev_d = 0;
-  int dsignalarray[arraysize];
 
   for (int j = 6; j < (number - 7); j++) {
-    dsignalarray[j] = int((6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] +
-                          3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] -
-                          signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] -
-                          4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]));
-
-    if (dsignalarray[j] <= 0 && j > 6) {
-      return (unsigned long)((j + (double)dsignalarray[j] / (prev_d - dsignalarray[j])) * dt);
+    int current_d = int(6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] +
+                         3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] -
+                         signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] -
+                         4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]);
+    if (current_d <= 0 && prev_d > 0) {
+      return (unsigned long)((j + (double)current_d / (prev_d - current_d)) * dt);
     }
-    prev_d = dsignalarray[j];
+    prev_d = current_d;
   }
   return 0;
 }
