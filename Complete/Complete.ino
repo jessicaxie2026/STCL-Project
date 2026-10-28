@@ -269,3 +269,4 @@ unsigned long peakfinder(int number, unsigned long duration) {
   }
   return 0;
 }
+
