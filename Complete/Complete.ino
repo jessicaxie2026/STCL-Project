@@ -1,35 +1,39 @@
-// --- Configuration and Thresholds from Source [6] ---
+// --- Configuration and Thresholds ---
 #define High_threshold1 1100    // Reference laser (Big Peaks)
 #define Low_threshold1 1000
-#define High_threshold2 650    // Slave laser (Small Peaks)
+#define High_threshold2 650     // Slave laser (Small Peaks)
 #define Low_threshold2 550
 
-#define pin_input1 A8          // Photodiode 1 (D2 and 935nm)
-#define pin_input2 A8          // Photodiode 2 (795nm)
+#define pin_input1 A4
 #define arraysize 2000
-#define dpin_in 8              // Manual switch
-#define dpin_out 12            // Trigger input
-#define alpha2_ref 0.50
+#define dpin_in 8               // Manual switch
+#define dpin_out 12             // Trigger input
 #define pin_output2 DAC1
 
-// --- Global Variables and PID Parameters from Source [7, 8] ---
-unsigned long t01, t02, t1, t2, start_time, end_time, tstartsweep, time_peak, timenow;
-unsigned long period = 55; 
+// --- Global Variables ---
+unsigned long t01, t02, t2, start_time, tstartsweep, time_peak;
+unsigned long period = 55;
 int signalarray[arraysize];
 int counter, Range;
-double value1, value2;
 float offset = 2800.0;
-float error = 0.0;
 float alpha2, error2, totalT;
+float error = 0.0;
 bool sweep_active = false;
 bool prev_trigger_state = false;
+bool running = false;           // start stopped; send 's' to run
+
+// Runtime-adjustable parameters
+double alpha2_ref = 0.50;
+float laser2_K_p = 0.7;
+float laser2_K_i = 1.0;
+int sign2 = -1;
 
 const float DAC_MIN_COUNTS = 1700.0f;
 const float DAC_MAX_COUNTS = 2300.0f;
-const float DAC_OFFSET_V = 3.175f;
-const float DAC_FULL_SCALE_V = 3.500f;
-const float DAC_3V3_COUNTS = 1500.0f;
-const float DAC_3V4_COUNTS = 2600.0f;
+
+float laser2_error_signal_current = 0;
+float laser2_error_signal_prev = 0;
+float laser2_control_signal = 0;
 
 static inline float clampDACValue(float value) {
   if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;
@@ -37,19 +41,72 @@ static inline float clampDACValue(float value) {
   return value;
 }
 
-static inline float clampControlSignal(float value, float limit) {
-  if (value > limit) return limit;
-  if (value < 0.0f) return 0.0f;
-  return value;
+void resetSweep() {
+  sweep_active = false;
+  counter = 0;
+  t01 = 0;
+  t2 = 0;
+  t02 = 0;
 }
 
-// PID variables from your original code [8]
-int sign2 = -1;
-volatile float laser2_K_i = 1;
-volatile float laser2_K_p = 0.7;
-float laser2_error_signal_current;
-float laser2_error_signal_prev;
-float laser2_control_signal = 0;
+// Parses "+0.1" / "-0.1" as a shift, anything else as an absolute value
+double applyValue(double current, const char *arg) {
+  if (arg[0] == '+' || arg[0] == '-') return current + atof(arg);
+  return atof(arg);
+}
+
+void handleCommand(char *cmd) {
+  char c = tolower(cmd[0]);
+
+  if (c == 's') {                       // start
+    resetSweep();
+    laser2_error_signal_prev = 0;
+    running = true;
+    Serial.println("Lock started");
+  }
+  else if (c == 'q') {                  // stop (DAC holds last value)
+    running = false;
+    resetSweep();
+    Serial.println("Lock stopped");
+  }
+  else if (c == 'k') {                  // kp0.7 / ki1.0 / kp+0.1 / ki-0.1
+    char which = tolower(cmd[1]);
+    char *arg = cmd + 2;
+    if (which == 'p') {
+      laser2_K_p = applyValue(laser2_K_p, arg);
+      Serial.print("Kp = "); Serial.println(laser2_K_p, 6);
+    } else if (which == 'i') {
+      laser2_K_i = applyValue(laser2_K_i, arg);
+      Serial.print("Ki = "); Serial.println(laser2_K_i, 6);
+    } else {
+      Serial.println("Use kpX or kiX");
+    }
+  }
+  else if (c == 'a') {                  // a0.52 / a+0.01 / a-0.01
+    alpha2_ref = applyValue(alpha2_ref, cmd + 1);
+    Serial.print("alpha2_ref = "); Serial.println(alpha2_ref, 6);
+  }
+  else if (c == 'f') {                  // f2000 -> DAC offset (counts)
+    offset = applyValue(offset, cmd + 1);
+    Serial.print("offset = "); Serial.println(offset, 1);
+  }
+  else if (c == 'r') {                  // reset integrator/controller state
+    laser2_control_signal = 0;
+    laser2_error_signal_prev = 0;
+    Serial.println("Controller reset");
+  }
+  else if (c == 'p') {                  // print status
+    Serial.print("running = "); Serial.print(running);
+    Serial.print("  Kp = "); Serial.print(laser2_K_p, 6);
+    Serial.print("  Ki = "); Serial.print(laser2_K_i, 6);
+    Serial.print("  alpha2_ref = "); Serial.print(alpha2_ref, 6);
+    Serial.print("  offset = "); Serial.print(offset, 1);
+    Serial.print("  control = "); Serial.println(laser2_control_signal, 2);
+  }
+  else {
+    Serial.println("Unknown command");
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -58,19 +115,37 @@ void setup() {
   pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
   Range = 800;
-  Serial.println("Setup complete");
+  Serial.println("Commands: s start, q stop, kpX Kp, kiX Ki, aX alpha ref, fX offset, r reset, p status");
+  Serial.println("X may be absolute (kp0.7) or a shift (kp+0.1)");
+}
+
+void readSerial() {
+  static char buf[24];
+  static uint8_t n = 0;
+  while (Serial.available()) {
+    char ch = Serial.read();
+    if (ch == '\n' || ch == '\r') {
+      if (n > 0) {
+        buf[n] = 0;
+        handleCommand(buf);
+        n = 0;
+      }
+    } else if (n < sizeof(buf) - 1) {
+      buf[n++] = ch;
+    }
+  }
 }
 
 void loop() {
+  readSerial();
+
+  if (!running) return;
+
   bool manual_now = (digitalRead(dpin_in) == LOW);
   bool trigger_now = (digitalRead(dpin_out) == LOW);
 
   if (!manual_now) {
-    sweep_active = false;
-    counter = 0;
-    t01 = 0;
-    t2 = 0;
-    t02 = 0;
+    resetSweep();
     prev_trigger_state = trigger_now;
     return;
   }
@@ -91,11 +166,7 @@ void loop() {
     else if (counter == 1) Serial.println("Missing peak: slave peak");
     else if (counter == 3) Serial.println("Missing peak: reference peak 2");
     else Serial.println("Missing peak: unknown peak");
-    sweep_active = false;
-    counter = 0;
-    t01 = 0;
-    t2 = 0;
-    t02 = 0;
+    resetSweep();
     prev_trigger_state = trigger_now;
     return;
   }
@@ -113,11 +184,7 @@ void loop() {
     unsigned long peak_offset = peakfinder(i, micros() - time_peak);
     if (peak_offset == 0) {
       Serial.println("Invalid peak: reference peak 1");
-      sweep_active = false;
-      counter = 0;
-      t01 = 0;
-      t2 = 0;
-      t02 = 0;
+      resetSweep();
     } else {
       t01 = time_peak - start_time + peak_offset;
       counter++;
@@ -138,32 +205,20 @@ void loop() {
       unsigned long peak_offset = peakfinder(i, micros() - time_peak);
       if (peak_offset == 0) {
         Serial.println("Invalid peak: slave peak");
-        sweep_active = false;
-        counter = 0;
-        t01 = 0;
-        t2 = 0;
-        t02 = 0;
+        resetSweep();
       } else {
         t2 = current_offset + peak_offset;
         counter++;
       }
     } else {
       Serial.println("Missing peak: slave peak");
-      sweep_active = false;
-      counter = 0;
-      t01 = 0;
-      t2 = 0;
-      t02 = 0;
+      resetSweep();
     }
   }
 
   else if (counter == 1 && sample > High_threshold1) {
     Serial.println("Invalid sequence: reference peak before second slave peak");
-    sweep_active = false;
-    counter = 0;
-    t01 = 0;
-    t2 = 0;
-    t02 = 0;
+    resetSweep();
   }
 
   else if (counter == 2 && sample > High_threshold2 && sample < High_threshold1) {
@@ -177,11 +232,7 @@ void loop() {
 
   else if (counter == 2 && sample > High_threshold1) {
     Serial.println("Invalid sequence: reference peak before second slave peak");
-    sweep_active = false;
-    counter = 0;
-    t01 = 0;
-    t2 = 0;
-    t02 = 0;
+    resetSweep();
   }
 
   else if (counter == 3 && sample > High_threshold1) {
@@ -195,11 +246,7 @@ void loop() {
     unsigned long peak_offset = peakfinder(i, micros() - time_peak);
     if (peak_offset == 0) {
       Serial.println("Invalid peak: reference peak 2");
-      sweep_active = false;
-      counter = 0;
-      t01 = 0;
-      t2 = 0;
-      t02 = 0;
+      resetSweep();
     } else {
       t02 = time_peak - start_time + peak_offset;
       counter++;
@@ -218,18 +265,11 @@ void loop() {
       float delta_laser2 = (laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev)) +
                            (laser2_K_i * laser2_error_signal_current);
       laser2_control_signal += (sign2 * delta_laser2);
-      if (laser2_control_signal > Range) {
-        laser2_control_signal = (float)Range;
-      }
-      if (laser2_control_signal < 0.0f) {
-        laser2_control_signal = 0.0f;
-      }
+      if (laser2_control_signal > Range) laser2_control_signal = (float)Range;
+      if (laser2_control_signal < 0.0f) laser2_control_signal = 0.0f;
 
-      if (laser2_control_signal >= 0 && laser2_control_signal <= Range) {
-        error = offset + laser2_control_signal - (Range / 2.0);
-        float clamped_error = clampDACValue(error);
-        analogWrite(pin_output2, (int)clamped_error);
-      }
+      error = offset + laser2_control_signal - (Range / 2.0);
+      analogWrite(pin_output2, (int)clampDACValue(error));
 
       laser2_error_signal_prev = laser2_error_signal_current;
 
@@ -238,30 +278,29 @@ void loop() {
       Serial.print(t02); Serial.print(", Lock Error: ");
       Serial.println(laser2_error_signal_current, 6);
     } else {
-      counter = 0;
-      t01 = 0;
-      t2 = 0;
-      t02 = 0;
       Serial.println("Glitchy sequence");
     }
+    counter = 0;
+    t01 = 0;
+    t2 = 0;
+    t02 = 0;
   }
 
   prev_trigger_state = trigger_now;
 }
 
-// Savitzky-Golay Peak Finder from Source [9]
+// Savitzky-Golay Peak Finder
 unsigned long peakfinder(int number, unsigned long duration) {
   if (number < 13) return 0;
   unsigned long dt = duration / number;
-  int dsignalarray[arraysize];
   int prev_d = 0;
 
   for (int j = 6; j < (number - 7); j++) {
-    int current_d = int((6 * signalarray[j+6] + 5 * signalarray[j+5] + 4 * signalarray[j+4] + 
-                         3 * signalarray[j+3] + 2 * signalarray[j+2] + signalarray[j+1] - 
-                         signalarray[j-1] - 2 * signalarray[j-2] - 3 * signalarray[j-3] - 
-                         4 * signalarray[j-4] - 5 * signalarray[j-5] - 6 * signalarray[j-6]));
-    
+    int current_d = int(6 * signalarray[j+6] + 5 * signalarray[j+5] + 4 * signalarray[j+4] +
+                        3 * signalarray[j+3] + 2 * signalarray[j+2] + signalarray[j+1] -
+                        signalarray[j-1] - 2 * signalarray[j-2] - 3 * signalarray[j-3] -
+                        4 * signalarray[j-4] - 5 * signalarray[j-5] - 6 * signalarray[j-6]);
+
     if (current_d <= 0 && prev_d > 0) {
       return (unsigned long)((j + (double)current_d / (prev_d - current_d)) * dt);
     }
@@ -269,4 +308,3 @@ unsigned long peakfinder(int number, unsigned long duration) {
   }
   return 0;
 }
-
