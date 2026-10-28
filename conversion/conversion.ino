@@ -1,11 +1,13 @@
 #define pin DAC0
+  
 
 void setup() {
-  analogWriteResolution(12); // Must be set to 12-bit for Due [4, 5]
+  analogWriteResolution(12); // Due suppo rts 12-bit ADC
 }
 
-void loop() {
 
-  analogWrite(pin, 2288);  
+
+void loop() {
+  analogWrite(pin, 2300);
 
 }

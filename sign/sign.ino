@@ -1,18 +1,22 @@
 // --- Configuration and Thresholds ---
-#define High_threshold1 1250
-#define Low_threshold1 1150
-#define High_threshold2 875
-#define Low_threshold2 850
+#define High_threshold1 1100
+#define Low_threshold1 1000
+#define High_threshold2 650
+#define Low_threshold2 550
 
 #define pin_input1 A4
 #define pin_output DAC0
 #define dpin_in 8
 #define dpin_out 11
 #define arraysize 150
-#define alpha2_ref 0.50
+
 
 // --- Global Variables ---
-int output = 2800;
+int high = 2300;
+int low = 1700;
+double alpha2_ref = 0.50;   // now adjustable at runtime
+int output = 2247;
+int increment = 3;
 int signalarray[arraysize];
 bool running = false;
 unsigned long t01 = 0;
@@ -26,6 +30,44 @@ bool sweep_active = false;
 bool prev_trigger_state = false;
 int counter = 0;
 
+void handleCommand(char *cmd) {
+  char c = tolower(cmd[0]);
+  char *arg = cmd + 1;
+
+  if (c == 's') {
+    running = true;
+    Serial.println("Test started");
+  }
+  else if (c == 'q') {
+    running = false;
+    Serial.println("Test stopped");
+  }
+  else if (c == 'o') {                 // o2300 -> set output absolute
+    output = constrain(atoi(arg), low, high);
+    analogWrite(pin_output, output);
+    Serial.print("Output = "); Serial.println(output);
+  }
+  else if (c == '+' || c == '-') {     // +10 / -25 -> shift output by N counts
+    output = constrain(output + atoi(cmd), low, high);
+    analogWrite(pin_output, output);
+    Serial.print("Output = "); Serial.println(output);
+  }
+  else if (c == 'a') {                 // a0.52 -> set ref;  a+0.01 / a-0.01 -> shift ref
+    if (arg[0] == '+' || arg[0] == '-') alpha2_ref += atof(arg);
+    else alpha2_ref = atof(arg);
+    Serial.print("alpha2_ref = "); Serial.println(alpha2_ref, 6);
+  }
+  else if (c == 'i') {                 // i0 -> stop auto-ramp, i3 -> ramp 3 counts per 5 s
+    increment = atoi(arg);
+    Serial.print("Auto increment = "); Serial.println(increment);
+  }
+  else if (c == 'p') {                 // print status
+    Serial.print("output = "); Serial.print(output);
+    Serial.print("  alpha2_ref = "); Serial.print(alpha2_ref, 6);
+    Serial.print("  increment = "); Serial.println(increment);
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   analogWriteResolution(12);
@@ -34,27 +76,30 @@ void setup() {
   pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
 
-  output = constrain(output, 2400, 3200);
+  output = constrain(output, low, high);
   analogWrite(pin_output, output);
 
-  Serial.println("Sign test: write output, then print peak-system error.");
-  Serial.println("Press 's' to start, 'q' to stop");
+  Serial.println("Commands: s start, q stop, +N/-N shift output, oN set output, a0.5 set ref, a+0.01 shift ref, iN auto-step, p status");
 }
 
 void loop() {
   static unsigned long lastStepMs = 0;
   static bool firstPass = true;
 
-  if (Serial.available()) {
-    char cmd = Serial.read();
-    if (cmd == 's' || cmd == 'S') {
-      running = true;
-      firstPass = true;
-      Serial.println("Test started");
-    }
-    if (cmd == 'q' || cmd == 'Q') {
-      running = false;
-      Serial.println("Test stopped");
+    static char buf[24];
+  static uint8_t n = 0;
+  while (Serial.available()) {
+    char ch = Serial.read();
+    if (ch == '\n' || ch == '\r') {
+      if (n > 0) {
+        buf[n] = 0;
+        char c0 = tolower(buf[0]);
+        if (c0 == 's') firstPass = true;   // keep the original restart behavior
+        handleCommand(buf);
+        n = 0;
+      }
+    } else if (n < sizeof(buf) - 1) {
+      buf[n++] = ch;
     }
   }
 
@@ -68,16 +113,19 @@ void loop() {
   }
 
   if (millis() - lastStepMs >= 5000UL) {
-    output += 4;
-    if (output > 3200) {
-      output = 3200;
+    output += increment;
+    if (output > high) {
+      output = high;
+    }
+    if (output < low){
+      output = low;
     }
     lastStepMs = millis();
     Serial.print("New output = ");
     Serial.println(output);
   }
 
-  int writeValue = constrain(output, 2400, 3200);
+  int writeValue = constrain(output, low, high);
   analogWrite(pin_output, writeValue);
 
   bool manual_now = (digitalRead(dpin_in) == LOW);
