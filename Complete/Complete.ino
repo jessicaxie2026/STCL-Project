@@ -5,7 +5,7 @@
 #define Low_threshold2 550
 
 #define pin_input1 A4
-#define arraysize 2000
+#define arraysize 150
 #define dpin_in 8               // Manual switch
 #define dpin_out 11             // Trigger input
 #define pin_output2 DAC0
@@ -108,6 +108,18 @@ void handleCommand(char *cmd) {
     alpha2_ref = applyValue(alpha2_ref, cmd + 1);
     Serial.print("alpha2_ref = "); Serial.println(alpha2_ref, 6);
   }
+  else if (c == 'd') {                  // d1 / d-1 -> set sign2; d -> flip it
+    char *arg = cmd + 1;
+    if (arg[0] == 0) {
+      sign2 = -sign2;
+    } else {
+      int v = atoi(arg);
+      if (v > 0) sign2 = 1;
+      else if (v < 0) sign2 = -1;
+      else { Serial.println("Use d1, d-1, or d to flip"); return; }
+    }
+    Serial.print("sign2 = "); Serial.println(sign2);
+  }
   else if (c == 'f') {                  // f2000 -> DAC offset (counts)
     offset = applyValue(offset, cmd + 1);
     Serial.print("offset = "); Serial.println(offset, 1);
@@ -125,6 +137,7 @@ void handleCommand(char *cmd) {
     Serial.print("  alpha2_ref = "); Serial.print(alpha2_ref, 6);
     Serial.print("  Kp = "); Serial.print(laser2_K_p, 6);
     Serial.print("  Ki = "); Serial.print(laser2_K_i, 6);
+    Serial.print("  sign2 = "); Serial.print(sign2);
     Serial.print("  offset = "); Serial.print(offset, 1);
     Serial.print("  control = "); Serial.println(laser2_control_signal, 2);
   }
@@ -144,7 +157,7 @@ void setup() {
   dac_output = (int)clampDACValue(offset);       // remove these two lines if you
   analogWrite(pin_output2, dac_output);          // don't want DAC output at power-up
 
-  Serial.println("Commands: s start, q stop, kpX Kp, kiX Ki, aX alpha ref, fX offset, r reset, p status");
+  Serial.println("Commands: s start, q stop, kpX Kp, kiX Ki, aX alpha ref, d1/d-1/d sign, fX offset, r reset, p status");
   Serial.println("X may be absolute (kp0.7) or a shift (kp+0.1)");
 }
 
