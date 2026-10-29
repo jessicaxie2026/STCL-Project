@@ -2,7 +2,7 @@
 #define High_threshold1 1100    // Reference laser (Big Peaks)
 #define Low_threshold1 1000
 #define High_threshold2 650     // Slave laser (Small Peaks)
-#define Low_threshold2 550
+#define Low_threshold2 630
 
 #define pin_input1 A4
 #define arraysize 150

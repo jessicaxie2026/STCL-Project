@@ -2,7 +2,7 @@
 #define High_threshold1 1100
 #define Low_threshold1 1000
 #define High_threshold2 650
-#define Low_threshold2 550
+#define Low_threshold2 630
 
 #define pin_input1 A4
 #define pin_output DAC0

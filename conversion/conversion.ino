@@ -8,6 +8,6 @@ void setup() {
 
 
 void loop() {
-  analogWrite(pin, 2300);
+  analogWrite(pin, 1700);
 
 }
