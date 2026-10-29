@@ -4,7 +4,7 @@
 #define High_threshold2 650     // Slave laser (Small Peaks)
 #define Low_threshold2 550
 
-#define pin_input1 A8
+#define pin_input1 A4
 #define arraysize 2000
 #define dpin_in 8               // Manual switch
 #define dpin_out 12             // Trigger input
