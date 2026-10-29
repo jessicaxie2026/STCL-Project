@@ -4,7 +4,7 @@
 #define High_threshold2 650     // Slave laser (Small Peaks)
 #define Low_threshold2 550
 
-#define pin_input1 A4
+#define pin_input1 A8
 #define arraysize 2000
 #define dpin_in 8               // Manual switch
 #define dpin_out 12             // Trigger input
@@ -18,6 +18,7 @@ int counter, Range;
 float offset = 2800.0;
 float alpha2, error2, totalT;
 float error = 0.0;
+int dac_output = 0;             // last value written to the DAC
 bool sweep_active = false;
 bool prev_trigger_state = false;
 bool running = false;           // start stopped; send 's' to run
@@ -47,6 +48,26 @@ void resetSweep() {
   t01 = 0;
   t2 = 0;
   t02 = 0;
+}
+
+// Same per-sweep report as Code 1: output, alpha2, lock error
+void reportSweep(double lockError) {
+  Serial.print("output = ");
+  Serial.print(dac_output);
+  Serial.print("  alpha2 = ");
+  if (t02 > t01 && t2 > t01) {
+    Serial.print((double)(t2 - t01) / (double)(t02 - t01), 6);
+  } else {
+    Serial.print("N/A");
+  }
+  Serial.print("  Lock Error: ");
+  Serial.println(lockError, 6);
+}
+
+// Failed sweep: report with error 9999 (like Code 1), then reset
+void failSweep() {
+  reportSweep(9999.0);
+  resetSweep();
 }
 
 // Parses "+0.1" / "-0.1" as a shift, anything else as an absolute value
@@ -97,9 +118,10 @@ void handleCommand(char *cmd) {
   }
   else if (c == 'p') {                  // print status
     Serial.print("running = "); Serial.print(running);
+    Serial.print("  output = "); Serial.print(dac_output);
+    Serial.print("  alpha2_ref = "); Serial.print(alpha2_ref, 6);
     Serial.print("  Kp = "); Serial.print(laser2_K_p, 6);
     Serial.print("  Ki = "); Serial.print(laser2_K_i, 6);
-    Serial.print("  alpha2_ref = "); Serial.print(alpha2_ref, 6);
     Serial.print("  offset = "); Serial.print(offset, 1);
     Serial.print("  control = "); Serial.println(laser2_control_signal, 2);
   }
@@ -166,7 +188,7 @@ void loop() {
     else if (counter == 1) Serial.println("Missing peak: slave peak");
     else if (counter == 3) Serial.println("Missing peak: reference peak 2");
     else Serial.println("Missing peak: unknown peak");
-    resetSweep();
+    failSweep();
     prev_trigger_state = trigger_now;
     return;
   }
@@ -184,7 +206,7 @@ void loop() {
     unsigned long peak_offset = peakfinder(i, micros() - time_peak);
     if (peak_offset == 0) {
       Serial.println("Invalid peak: reference peak 1");
-      resetSweep();
+      failSweep();
     } else {
       t01 = time_peak - start_time + peak_offset;
       counter++;
@@ -205,20 +227,20 @@ void loop() {
       unsigned long peak_offset = peakfinder(i, micros() - time_peak);
       if (peak_offset == 0) {
         Serial.println("Invalid peak: slave peak");
-        resetSweep();
+        failSweep();
       } else {
         t2 = current_offset + peak_offset;
         counter++;
       }
     } else {
       Serial.println("Missing peak: slave peak");
-      resetSweep();
+      failSweep();
     }
   }
 
   else if (counter == 1 && sample > High_threshold1) {
     Serial.println("Invalid sequence: reference peak before second slave peak");
-    resetSweep();
+    failSweep();
   }
 
   else if (counter == 2 && sample > High_threshold2 && sample < High_threshold1) {
@@ -232,7 +254,7 @@ void loop() {
 
   else if (counter == 2 && sample > High_threshold1) {
     Serial.println("Invalid sequence: reference peak before second slave peak");
-    resetSweep();
+    failSweep();
   }
 
   else if (counter == 3 && sample > High_threshold1) {
@@ -246,7 +268,7 @@ void loop() {
     unsigned long peak_offset = peakfinder(i, micros() - time_peak);
     if (peak_offset == 0) {
       Serial.println("Invalid peak: reference peak 2");
-      resetSweep();
+      failSweep();
     } else {
       t02 = time_peak - start_time + peak_offset;
       counter++;
@@ -269,16 +291,15 @@ void loop() {
       if (laser2_control_signal < 0.0f) laser2_control_signal = 0.0f;
 
       error = offset + laser2_control_signal - (Range / 2.0);
-      analogWrite(pin_output2, (int)clampDACValue(error));
+      dac_output = (int)clampDACValue(error);
+      analogWrite(pin_output2, dac_output);
 
       laser2_error_signal_prev = laser2_error_signal_current;
 
-      Serial.print(t01); Serial.print(", ");
-      Serial.print(t2); Serial.print(", ");
-      Serial.print(t02); Serial.print(", Lock Error: ");
-      Serial.println(laser2_error_signal_current, 6);
+      reportSweep(laser2_error_signal_current);
     } else {
       Serial.println("Glitchy sequence");
+      reportSweep(9999.0);
     }
     counter = 0;
     t01 = 0;
