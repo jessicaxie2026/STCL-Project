@@ -28,7 +28,7 @@ bool running = false;           // start stopped; send 's' to run
 double alpha2_ref = 0.50;
 float laser2_K_p = 0.7;
 float laser2_K_i = 1.0;
-int sign2 = -1;
+int sign2 = 1;
 
 const float DAC_MIN_COUNTS = 1700.0f;
 const float DAC_MAX_COUNTS = 2300.0f;
