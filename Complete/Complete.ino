@@ -7,12 +7,12 @@
 #define pin_input1 A4
 #define arraysize 2000
 #define dpin_in 8               // Manual switch
-#define dpin_out 12             // Trigger input
-#define pin_output2 DAC1
+#define dpin_out 11             // Trigger input
+#define pin_output2 DAC0
 
 // --- Global Variables ---
 unsigned long t01, t02, t2, start_time, tstartsweep, time_peak;
-unsigned long period = 55;
+unsigned long period = 100;
 int signalarray[arraysize];
 int counter;
 int Range = 600;                // control swing: output = offset +/- Range/2
