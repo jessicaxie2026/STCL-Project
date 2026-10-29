@@ -43,32 +43,18 @@ static inline float clampDACValue(float value) {
   return value;
 }
 
-void resetSweep() {
-  sweep_active = false;
-  counter = 0;
-  t01 = 0;
-  t2 = 0;
-  t02 = 0;
-}
-
-// Same per-sweep report as Code 1: output, alpha2, lock error
+// Per-sweep report (same format and logic as Code 2): output, alpha2, lock error
 void reportSweep(double lockError) {
   Serial.print("output = ");
   Serial.print(dac_output);
   Serial.print("  alpha2 = ");
-  if (t02 > t01 && t2 > t01) {
+  if (t02 > t01) {
     Serial.print((double)(t2 - t01) / (double)(t02 - t01), 6);
   } else {
     Serial.print("N/A");
   }
   Serial.print("  Lock Error: ");
   Serial.println(lockError, 6);
-}
-
-// Failed sweep: report with error 9999 (like Code 1), then reset
-void failSweep() {
-  reportSweep(9999.0);
-  resetSweep();
 }
 
 // Parses "+0.1" / "-0.1" as a shift, anything else as an absolute value
@@ -81,14 +67,12 @@ void handleCommand(char *cmd) {
   char c = tolower(cmd[0]);
 
   if (c == 's') {                       // start
-    resetSweep();
     laser2_error_signal_prev = 0;
     running = true;
     Serial.println("Lock started");
   }
   else if (c == 'q') {                  // stop (DAC holds last value)
     running = false;
-    resetSweep();
     Serial.println("Lock stopped");
   }
   else if (c == 'k') {                  // kp0.7 / ki1.0 / kp+0.1 / ki-0.1
@@ -187,7 +171,8 @@ void loop() {
   bool trigger_now = (digitalRead(dpin_out) == LOW);
 
   if (!manual_now) {
-    resetSweep();
+    sweep_active = false;
+    counter = 0;
     prev_trigger_state = trigger_now;
     return;
   }
@@ -197,105 +182,95 @@ void loop() {
       start_time = micros();
       tstartsweep = millis();
       counter = 0;
+      t01 = 0;
+      t2 = 0;
+      t02 = 0;
       sweep_active = true;
     }
     prev_trigger_state = trigger_now;
     return;
   }
 
+  int sample = 0;
+
   if (millis() - tstartsweep > period) {
     if (counter == 0) Serial.println("Missing peak: reference peak 1");
     else if (counter == 1) Serial.println("Missing peak: slave peak");
     else if (counter == 3) Serial.println("Missing peak: reference peak 2");
     else Serial.println("Missing peak: unknown peak");
-    failSweep();
-    prev_trigger_state = trigger_now;
-    return;
-  }
+    sweep_active = false;
+    counter = 0;
+  } else {
+    sample = analogRead(pin_input1);
 
-  int sample = analogRead(pin_input1);
-
-  // Reference peak 1
-  if (counter == 0 && sample > High_threshold1) {
-    time_peak = micros();
-    int i = 0;
-    do {
-      if (i < arraysize) signalarray[i] = sample;
-      sample = analogRead(pin_input1);
-      i++;
-    } while (sample > Low_threshold1 && i < arraysize);
-    unsigned long peak_offset = peakfinder(i, micros() - time_peak);
-    if (peak_offset == 0) {
-      Serial.println("Invalid peak: reference peak 1");
-      failSweep();
-    } else {
-      t01 = time_peak - start_time + peak_offset;
-      counter++;
-    }
-  }
-
-  // Slave peak (first of the two)
-  else if (counter == 1 && sample > High_threshold2) {
-    time_peak = micros();
-    unsigned long current_offset = time_peak - start_time;
-    if (current_offset > t01 && (current_offset - t01) < 10000) {
+    // Reference peak 1
+    if (counter == 0 && sample > High_threshold1) {
+      time_peak = micros();
       int i = 0;
       do {
         if (i < arraysize) signalarray[i] = sample;
         sample = analogRead(pin_input1);
         i++;
-      } while (sample > Low_threshold2 && i < arraysize);
-      unsigned long peak_offset = peakfinder(i, micros() - time_peak);
-      if (peak_offset == 0) {
-        Serial.println("Invalid peak: slave peak");
-        failSweep();
-      } else {
-        t2 = current_offset + peak_offset;
-        counter++;
-      }
-    } else {
-      Serial.println("Missing peak: slave peak");
-      failSweep();
+      } while (sample > Low_threshold1 && i < arraysize);
+      t01 = time_peak - start_time + peakfinder(i, micros() - time_peak);
+      counter++;
     }
-  }
 
-  // Second slave peak (just skipped over)
-  else if (counter == 2 && sample > High_threshold2) {
-    int i = 0;
-    do {
-      sample = analogRead(pin_input1);
-      i++;
-    } while (sample > Low_threshold2 && i < arraysize);
-    counter++;
-  }
+    // Slave peak (first of the two)
+    else if (counter == 1 && sample > High_threshold2) {
+      time_peak = micros();
+      unsigned long current_offset = time_peak - start_time;
+      if (current_offset > t01 && (current_offset - t01) < 10000) {
+        int i = 0;
+        do {
+          if (i < arraysize) signalarray[i] = sample;
+          sample = analogRead(pin_input1);
+          i++;
+        } while (sample > Low_threshold2 && i < arraysize);
+        t2 = current_offset + peakfinder(i, micros() - time_peak);
+        counter++;
+      } else {
+        Serial.println("Missing peak: slave peak");
+        sweep_active = false;
+        counter = 0;
+      }
+    }
 
-  // Reference peak 2
-  else if (counter == 3 && sample > High_threshold1) {
-    time_peak = micros();
-    int i = 0;
-    do {
-      if (i < arraysize) signalarray[i] = sample;
-      sample = analogRead(pin_input1);
-      i++;
-    } while (sample > Low_threshold1 && i < arraysize);
-    unsigned long peak_offset = peakfinder(i, micros() - time_peak);
-    if (peak_offset == 0) {
-      Serial.println("Invalid peak: reference peak 2");
-      failSweep();
-    } else {
-      t02 = time_peak - start_time + peak_offset;
+    // Second slave peak (just skipped over)
+    else if (counter == 2 && sample > High_threshold2) {
+      int i = 0;
+      do {
+        sample = analogRead(pin_input1);
+        i++;
+      } while (sample > Low_threshold2 && i < arraysize);
+      counter++;
+    }
+
+    // Reference peak 2
+    else if (counter == 3 && sample > High_threshold1) {
+      time_peak = micros();
+      int i = 0;
+      do {
+        if (i < arraysize) signalarray[i] = sample;
+        sample = analogRead(pin_input1);
+        i++;
+      } while (sample > Low_threshold1 && i < arraysize);
+      t02 = time_peak - start_time + peakfinder(i, micros() - time_peak);
+      sweep_active = false;
       counter++;
     }
   }
 
-  if (counter >= 4) {
-    sweep_active = false;
+  // End of sweep (complete or failed): compute error, update controller, report
+  if (!sweep_active) {
+    double lockError = 9999.0;
 
-    if (t2 > t01 && t2 < t02 && t02 > t01) {
+    if (t01 != 0 && t2 != 0 && t02 != 0 && t2 > t01 && t2 < t02) {
       error2 = (double)t2 - t01;
       totalT = (double)t02 - t01;
       alpha2 = error2 / totalT;
-      laser2_error_signal_current = alpha2_ref - alpha2;
+      lockError = alpha2_ref - alpha2;
+      laser2_error_signal_current = lockError;
 
       float delta_laser2 = (laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev)) +
                            (laser2_K_i * laser2_error_signal_current);
@@ -308,16 +283,9 @@ void loop() {
       analogWrite(pin_output2, dac_output);
 
       laser2_error_signal_prev = laser2_error_signal_current;
-
-      reportSweep(laser2_error_signal_current);
-    } else {
-      Serial.println("Glitchy sequence");
-      reportSweep(9999.0);
     }
-    counter = 0;
-    t01 = 0;
-    t2 = 0;
-    t02 = 0;
+
+    reportSweep(lockError);
   }
 
   prev_trigger_state = trigger_now;
