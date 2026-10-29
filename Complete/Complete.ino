@@ -14,11 +14,12 @@
 unsigned long t01, t02, t2, start_time, tstartsweep, time_peak;
 unsigned long period = 55;
 int signalarray[arraysize];
-int counter, Range;
-float offset = 2800.0;
+int counter;
+int Range = 600;                // control swing: output = offset +/- Range/2
+float offset = 2000.0;          // midpoint of the output (DAC counts)
 float alpha2, error2, totalT;
 float error = 0.0;
-int dac_output = 0;             // last value written to the DAC
+int dac_output = 2000;          // last value written to the DAC
 bool sweep_active = false;
 bool prev_trigger_state = false;
 bool running = false;           // start stopped; send 's' to run
@@ -34,7 +35,7 @@ const float DAC_MAX_COUNTS = 2300.0f;
 
 float laser2_error_signal_current = 0;
 float laser2_error_signal_prev = 0;
-float laser2_control_signal = 0;
+float laser2_control_signal = 300;   // Range / 2 (set again in setup)
 
 static inline float clampDACValue(float value) {
   if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;
@@ -111,10 +112,12 @@ void handleCommand(char *cmd) {
     offset = applyValue(offset, cmd + 1);
     Serial.print("offset = "); Serial.println(offset, 1);
   }
-  else if (c == 'r') {                  // reset integrator/controller state
-    laser2_control_signal = 0;
+  else if (c == 'r') {                  // reset controller to the midpoint
+    laser2_control_signal = Range / 2.0;
     laser2_error_signal_prev = 0;
-    Serial.println("Controller reset");
+    dac_output = (int)clampDACValue(offset);
+    analogWrite(pin_output2, dac_output);
+    Serial.println("Controller reset to midpoint");
   }
   else if (c == 'p') {                  // print status
     Serial.print("running = "); Serial.print(running);
@@ -136,7 +139,11 @@ void setup() {
   analogReadResolution(12);
   pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
-  Range = 800;
+
+  laser2_control_signal = Range / 2.0;           // start at the midpoint
+  dac_output = (int)clampDACValue(offset);       // remove these two lines if you
+  analogWrite(pin_output2, dac_output);          // don't want DAC output at power-up
+
   Serial.println("Commands: s start, q stop, kpX Kp, kiX Ki, aX alpha ref, fX offset, r reset, p status");
   Serial.println("X may be absolute (kp0.7) or a shift (kp+0.1)");
 }
