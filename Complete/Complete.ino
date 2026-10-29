@@ -202,6 +202,7 @@ void loop() {
 
   int sample = analogRead(pin_input1);
 
+  // Reference peak 1
   if (counter == 0 && sample > High_threshold1) {
     time_peak = micros();
     int i = 0;
@@ -220,10 +221,10 @@ void loop() {
     }
   }
 
-  else if (counter == 1 && sample > High_threshold2 && sample < High_threshold1) {
+  // Slave peak (first of the two)
+  else if (counter == 1 && sample > High_threshold2) {
     time_peak = micros();
     unsigned long current_offset = time_peak - start_time;
-
     if (current_offset > t01 && (current_offset - t01) < 10000) {
       int i = 0;
       do {
@@ -245,12 +246,8 @@ void loop() {
     }
   }
 
-  else if (counter == 1 && sample > High_threshold1) {
-    Serial.println("Invalid sequence: reference peak before second slave peak");
-    failSweep();
-  }
-
-  else if (counter == 2 && sample > High_threshold2 && sample < High_threshold1) {
+  // Second slave peak (just skipped over)
+  else if (counter == 2 && sample > High_threshold2) {
     int i = 0;
     do {
       sample = analogRead(pin_input1);
@@ -259,11 +256,7 @@ void loop() {
     counter++;
   }
 
-  else if (counter == 2 && sample > High_threshold1) {
-    Serial.println("Invalid sequence: reference peak before second slave peak");
-    failSweep();
-  }
-
+  // Reference peak 2
   else if (counter == 3 && sample > High_threshold1) {
     time_peak = micros();
     int i = 0;
