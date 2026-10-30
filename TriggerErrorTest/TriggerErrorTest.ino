@@ -11,7 +11,7 @@
 #define dpin_in 8       // Manual lock switch
 #define dpin_out 11     // Trigger input from Function Gen
 #define arraysize 150
-#define alpha2_ref 0.50
+#define alpha2_ref 0.02
 
 // --- Global Variables ---
 unsigned long t01, t02, t2, start_time, time_peak, tstartsweep;

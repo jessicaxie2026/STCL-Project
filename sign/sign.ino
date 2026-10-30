@@ -12,10 +12,10 @@
 
 
 // --- Global Variables ---
-int high = 2300;
+int high = 3000;
 int low = 1700;
-double alpha2_ref = 0.50;   // now adjustable at runtime
-int output = 2247;
+double alpha2_ref = 0.0125;   // now adjustable at runtime
+int output = 2661;
 int increment = 3;
 int signalarray[arraysize];
 bool running = false;

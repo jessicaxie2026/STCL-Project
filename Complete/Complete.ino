@@ -16,7 +16,7 @@ unsigned long period = 100;
 int signalarray[arraysize];
 int counter;
 int Range = 600;                // control swing: output = offset +/- Range/2
-float offset = 2000.0;          // midpoint of the output (DAC counts)
+float offset = 2615.0;          // midpoint of the output (DAC counts)
 float alpha2, error2, totalT;
 float error = 0.0;
 int dac_output = 2000;          // last value written to the DAC
@@ -25,13 +25,13 @@ bool prev_trigger_state = false;
 bool running = false;           // start stopped; send 's' to run
 
 // Runtime-adjustable parameters
-double alpha2_ref = 0.50;
-float laser2_K_p = 0.7;
-float laser2_K_i = 1.0;
+double alpha2_ref = 0.0125;
+float laser2_K_p = 3;
+float laser2_K_i = 4;
 int sign2 = 1;
 
 const float DAC_MIN_COUNTS = 1700.0f;
-const float DAC_MAX_COUNTS = 2300.0f;
+const float DAC_MAX_COUNTS = 3000.0f;
 
 float laser2_error_signal_current = 0;
 float laser2_error_signal_prev = 0;
