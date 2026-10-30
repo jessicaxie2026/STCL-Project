@@ -10,7 +10,7 @@ int static_variable = 500;
 #define dpin_out 5
 #define dpin_in 3
 #define alpha1_ref 0.6
-#define alpha2_ref 0.50
+#define alpha2_ref 0.02
 #define pin_output1 DAC0 
 #define pin_output2 DAC1 // Fixed macro name definition
 

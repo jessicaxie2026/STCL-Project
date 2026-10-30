@@ -16,7 +16,7 @@
 #define SLAVE_END_THRESHOLD 750
 
 #define alpha1_ref 0.6  
-#define alpha2_ref 0.50
+#define alpha2_ref 0.02
 
 // Global Variables
 // Trigger state will be read via polling from `dpin_in` in the main loop

@@ -5,7 +5,7 @@
 #define REF_END_THRESHOLD 950
 #define SLAVE_START_THRESHOLD 800
 #define SLAVE_END_THRESHOLD 750
-#define alpha2_ref 0.50
+#define alpha2_ref 0.02
 #define arraysize 2000
 
 int output = 2800;

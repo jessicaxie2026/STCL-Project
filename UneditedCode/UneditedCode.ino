@@ -10,7 +10,7 @@ int static_variable = 500;
 #define dpin_out 6//digital output for triggering function generator
 #define dpin_in 3
 #define alpha1_ref 0.6
-#define alpha2_ref 0.50
+#define alpha2_ref 0.02
 #define pin_output1 DAC0 //feedback signal to 935nm ECDL piezo
 #define pin_output1 DAC1 //feedback signal to 795nm DBR current
 

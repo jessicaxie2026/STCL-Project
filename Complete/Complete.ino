@@ -25,7 +25,7 @@ bool prev_trigger_state = false;
 bool running = false;           // start stopped; send 's' to run
 
 // Runtime-adjustable parameters
-double alpha2_ref = 0.0125;
+double alpha2_ref = 0.02;
 float laser2_K_p = 3;
 float laser2_K_i = 4;
 int sign2 = 1;

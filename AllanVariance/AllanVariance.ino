@@ -14,7 +14,7 @@
 #define SLAVE_START_THRESHOLD 800
 #define SLAVE_END_THRESHOLD 750
 #define alpha1_ref 0.6
-#define alpha2_ref 0.50
+#define alpha2_ref 0.02
 
 // Allan Variance Parameters
 #define MAX_MEASUREMENTS 5000     // Maximum number of frequency measurements to collect
