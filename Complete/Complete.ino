@@ -55,6 +55,11 @@ void reportSweep(double lockError) {
   }
   Serial.print("  Lock Error: ");
   Serial.println(lockError, 6);
+
+  Serial.print(t01); Serial.print(", ");
+  Serial.print(t2); Serial.print(", ");
+  Serial.print(t02); Serial.print(", Lock Error: ");
+  Serial.println(lockError, 6);
 }
 
 // Parses "+0.1" / "-0.1" as a shift, anything else as an absolute value
@@ -303,7 +308,7 @@ unsigned long peakfinder(int number, unsigned long duration) {
                         signalarray[j-1] - 2 * signalarray[j-2] - 3 * signalarray[j-3] -
                         4 * signalarray[j-4] - 5 * signalarray[j-5] - 6 * signalarray[j-6]);
 
-    if (current_d <= 0 && prev_d > 0) {
+    if (current_d <= 0 && j > 6) {
       return (unsigned long)((j + (double)current_d / (prev_d - current_d)) * dt);
     }
     prev_d = current_d;
