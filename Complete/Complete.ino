@@ -15,6 +15,7 @@ unsigned long t01, t02, t2, start_time, tstartsweep, time_peak;
 unsigned long period = 100;
 int signalarray[arraysize];
 int counter;
+int max1 = 0;                   // height of reference peak 1
 int Range = 600;                // control swing: output = offset +/- Range/2
 float offset = 2615.0;          // midpoint of the output (DAC counts)
 float alpha2, error2, totalT;
@@ -23,6 +24,7 @@ int dac_output = 2000;          // last value written to the DAC
 bool sweep_active = false;
 bool prev_trigger_state = false;
 bool running = false;           // start stopped; send 's' to run
+bool pid_active = true;         // false = PID stopped, DAC holds, error still reported
 
 // Runtime-adjustable parameters
 double alpha2_ref = 0.02;
@@ -41,6 +43,15 @@ static inline float clampDACValue(float value) {
   if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;
   if (value < DAC_MIN_COUNTS) return DAC_MIN_COUNTS;
   return value;
+}
+
+// Make the controller state match the current DAC value (no jump when the PID starts or resumes)
+void syncControlToDAC() {
+  float c = (float)dac_output - offset + (Range / 2.0f);
+  if (c > Range) c = (float)Range;
+  if (c < 0.0f) c = 0.0f;
+  laser2_control_signal = c;
+  laser2_error_signal_prev = 0;
 }
 
 // Per-sweep report (same format and logic as Code 2): output, alpha2, lock error
@@ -71,14 +82,40 @@ double applyValue(double current, const char *arg) {
 void handleCommand(char *cmd) {
   char c = tolower(cmd[0]);
 
-  if (c == 's') {                       // start
-    laser2_error_signal_prev = 0;
+  if (c == 's') {                       // start (PID on)
+    syncControlToDAC();
+    sweep_active = false;
+    counter = 0;
+    pid_active = true;
     running = true;
     Serial.println("Lock started");
   }
-  else if (c == 'q') {                  // stop (DAC holds last value)
+  else if (c == 'q') {                  // stop everything (DAC holds last value, no error output)
     running = false;
+    sweep_active = false;
+    counter = 0;
     Serial.println("Lock stopped");
+  }
+  else if (c == 'h') {                  // stop the PID only: keep measuring, DAC holds
+    pid_active = false;
+    Serial.print("PID stopped, DAC holding at "); Serial.println(dac_output);
+  }
+  else if (c == 'g') {                  // resume the PID from the current DAC value
+    syncControlToDAC();
+    pid_active = true;
+    Serial.print("PID resumed from DAC = "); Serial.println(dac_output);
+  }
+  else if (c == 'o') {                  // o2400 -> set DAC; o+10 / o-10 -> shift DAC (PID must be stopped)
+    if (running && pid_active) {
+      Serial.println("PID is running. Send h to stop it first.");
+    } else if (cmd[1] == 0) {
+      Serial.println("Use oN (absolute) or o+N / o-N (shift)");
+    } else {
+      double v = applyValue((double)dac_output, cmd + 1);
+      dac_output = (int)clampDACValue((float)v);
+      analogWrite(pin_output2, dac_output);
+      Serial.print("DAC output = "); Serial.println(dac_output);
+    }
   }
   else if (c == 'k') {                  // kp0.7 / ki1.0 / kp+0.1 / ki-0.1
     char which = tolower(cmd[1]);
@@ -122,6 +159,7 @@ void handleCommand(char *cmd) {
   }
   else if (c == 'p') {                  // print status
     Serial.print("running = "); Serial.print(running);
+    Serial.print("  pid_active = "); Serial.print(pid_active);
     Serial.print("  output = "); Serial.print(dac_output);
     Serial.print("  alpha2_ref = "); Serial.print(alpha2_ref, 6);
     Serial.print("  Kp = "); Serial.print(laser2_K_p, 6);
@@ -146,8 +184,8 @@ void setup() {
   dac_output = (int)clampDACValue(offset);       // remove these two lines if you
   analogWrite(pin_output2, dac_output);          // don't want DAC output at power-up
 
-  Serial.println("Commands: s start, q stop, kpX Kp, kiX Ki, aX alpha ref, d1/d-1/d sign, fX offset, r reset, p status");
-  Serial.println("X may be absolute (kp0.7) or a shift (kp+0.1)");
+  Serial.println("Commands: s start, q stop all, h stop PID (keep error output), g resume PID, oN set DAC (PID stopped), kpX Kp, kiX Ki, aX alpha ref, d1/d-1/d sign, fX offset, r reset, p status");
+  Serial.println("X may be absolute (kp0.7, o2400) or a shift (kp+0.1, o+10)");
 }
 
 void readSerial() {
@@ -212,11 +250,14 @@ void loop() {
     if (counter == 0 && sample > High_threshold1) {
       time_peak = micros();
       int i = 0;
+      int mx = 0;
       do {
+        if (sample > mx) mx = sample;
         if (i < arraysize) signalarray[i] = sample;
         sample = analogRead(pin_input1);
         i++;
       } while (sample > Low_threshold1 && i < arraysize);
+      max1 = mx;
       t01 = time_peak - start_time + peakfinder(i, micros() - time_peak);
       counter++;
     }
@@ -255,18 +296,24 @@ void loop() {
     else if (counter == 3 && sample > High_threshold1) {
       time_peak = micros();
       int i = 0;
+      int mx = 0;
       do {
+        if (sample > mx) mx = sample;
         if (i < arraysize) signalarray[i] = sample;
         sample = analogRead(pin_input1);
         i++;
       } while (sample > Low_threshold1 && i < arraysize);
-      t02 = time_peak - start_time + peakfinder(i, micros() - time_peak);
-      sweep_active = false;
-      counter++;
+
+      if (mx >= (max1 * 7) / 10) {          // at least 70% of reference peak 1's height
+        t02 = time_peak - start_time + peakfinder(i, micros() - time_peak);
+        sweep_active = false;
+        counter++;
+      }
+      // otherwise it was a small peak, so keep waiting for the real one
     }
   }
 
-  // End of sweep (complete or failed): compute error, update controller, report
+  // End of sweep (complete or failed): compute error, update controller (if PID active), report
   if (!sweep_active) {
     double lockError = 9999.0;
 
@@ -275,19 +322,22 @@ void loop() {
       totalT = (double)t02 - t01;
       alpha2 = error2 / totalT;
       lockError = alpha2_ref - alpha2;
-      laser2_error_signal_current = lockError;
 
-      float delta_laser2 = (laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev)) +
-                           (laser2_K_i * laser2_error_signal_current);
-      laser2_control_signal += (sign2 * delta_laser2);
-      if (laser2_control_signal > Range) laser2_control_signal = (float)Range;
-      if (laser2_control_signal < 0.0f) laser2_control_signal = 0.0f;
+      if (pid_active) {
+        laser2_error_signal_current = lockError;
 
-      error = offset + laser2_control_signal - (Range / 2.0);
-      dac_output = (int)clampDACValue(error);
-      analogWrite(pin_output2, dac_output);
+        float delta_laser2 = (laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev)) +
+                             (laser2_K_i * laser2_error_signal_current);
+        laser2_control_signal += (sign2 * delta_laser2);
+        if (laser2_control_signal > Range) laser2_control_signal = (float)Range;
+        if (laser2_control_signal < 0.0f) laser2_control_signal = 0.0f;
 
-      laser2_error_signal_prev = laser2_error_signal_current;
+        error = offset + laser2_control_signal - (Range / 2.0);
+        dac_output = (int)clampDACValue(error);
+        analogWrite(pin_output2, dac_output);
+
+        laser2_error_signal_prev = laser2_error_signal_current;
+      }
     }
 
     reportSweep(lockError);
