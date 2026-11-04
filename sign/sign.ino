@@ -1,137 +1,70 @@
 // --- Configuration and Thresholds ---
-#define High_threshold1 1100    // Reference laser (Big Peaks)
-#define Low_threshold1 630
-#define High_threshold2 650     // Slave laser (Small Peaks)
+#define High_threshold1 1100
+#define Low_threshold1 650
+#define High_threshold2 650
 #define Low_threshold2 630
 
 #define pin_input1 A4
+#define pin_output DAC0
+#define dpin_in 8
+#define dpin_out 11
 #define arraysize 150
-#define dpin_in 8               // Manual switch
-#define dpin_out 11             // Trigger input
-#define pin_output2 DAC0
+
 
 // --- Global Variables ---
-unsigned long t01, t02, t2, start_time, tstartsweep, time_peak;
-unsigned long period = 100;
+int high = 3000;
+int low = 1700;
+double alpha2_ref = 0.02;   // now adjustable at runtime
+int output = 2661;
+int increment = 3;
 int signalarray[arraysize];
-int counter;
-int Range = 600;                // control swing: output = offset +/- Range/2
-float offset = 2615.0;          // midpoint of the output (DAC counts)
-float alpha2, error2, totalT;
-float error = 0.0;
-int dac_output = 2000;          // last value written to the DAC
+bool running = false;
+unsigned long t01 = 0;
+unsigned long t02 = 0;
+unsigned long t2 = 0;
+unsigned long start_time = 0;
+unsigned long time_peak = 0;
+unsigned long tstartsweep = 0;
+unsigned long period = 100;
 bool sweep_active = false;
 bool prev_trigger_state = false;
-bool running = false;           // start stopped; send 's' to run
-
-// Runtime-adjustable parameters
-double alpha2_ref = 0.02;
-float laser2_K_p = 3;
-float laser2_K_i = 4;
-int sign2 = 1;
-
-const float DAC_MIN_COUNTS = 1700.0f;
-const float DAC_MAX_COUNTS = 3000.0f;
-
-float laser2_error_signal_current = 0;
-float laser2_error_signal_prev = 0;
-float laser2_control_signal = 300;   // Range / 2 (set again in setup)
-
-static inline float clampDACValue(float value) {
-  if (value > DAC_MAX_COUNTS) return DAC_MAX_COUNTS;
-  if (value < DAC_MIN_COUNTS) return DAC_MIN_COUNTS;
-  return value;
-}
-
-// Per-sweep report (same format and logic as Code 2): output, alpha2, lock error
-void reportSweep(double lockError) {
-  Serial.print("output = ");
-  Serial.print(dac_output);
-  Serial.print("  alpha2 = ");
-  if (t02 > t01) {
-    Serial.print((double)(t2 - t01) / (double)(t02 - t01), 6);
-  } else {
-    Serial.print("N/A");
-  }
-  Serial.print("  Lock Error: ");
-  Serial.println(lockError, 6);
-
-  Serial.print(t01); Serial.print(", ");
-  Serial.print(t2); Serial.print(", ");
-  Serial.print(t02); Serial.print(", Lock Error: ");
-  Serial.println(lockError, 6);
-}
-
-// Parses "+0.1" / "-0.1" as a shift, anything else as an absolute value
-double applyValue(double current, const char *arg) {
-  if (arg[0] == '+' || arg[0] == '-') return current + atof(arg);
-  return atof(arg);
-}
+int counter = 0;
 
 void handleCommand(char *cmd) {
   char c = tolower(cmd[0]);
+  char *arg = cmd + 1;
 
-  if (c == 's') {                       // start
-    laser2_error_signal_prev = 0;
+  if (c == 's') {
     running = true;
-    Serial.println("Lock started");
+    Serial.println("Test started");
   }
-  else if (c == 'q') {                  // stop (DAC holds last value)
+  else if (c == 'q') {
     running = false;
-    Serial.println("Lock stopped");
+    Serial.println("Test stopped");
   }
-  else if (c == 'k') {                  // kp0.7 / ki1.0 / kp+0.1 / ki-0.1
-    char which = tolower(cmd[1]);
-    char *arg = cmd + 2;
-    if (which == 'p') {
-      laser2_K_p = applyValue(laser2_K_p, arg);
-      Serial.print("Kp = "); Serial.println(laser2_K_p, 6);
-    } else if (which == 'i') {
-      laser2_K_i = applyValue(laser2_K_i, arg);
-      Serial.print("Ki = "); Serial.println(laser2_K_i, 6);
-    } else {
-      Serial.println("Use kpX or kiX");
-    }
+  else if (c == 'o') {                 // o2300 -> set output absolute
+    output = constrain(atoi(arg), low, high);
+    analogWrite(pin_output, output);
+    Serial.print("Output = "); Serial.println(output);
   }
-  else if (c == 'a') {                  // a0.52 / a+0.01 / a-0.01
-    alpha2_ref = applyValue(alpha2_ref, cmd + 1);
+  else if (c == '+' || c == '-') {     // +10 / -25 -> shift output by N counts
+    output = constrain(output + atoi(cmd), low, high);
+    analogWrite(pin_output, output);
+    Serial.print("Output = "); Serial.println(output);
+  }
+  else if (c == 'a') {                 // a0.52 -> set ref;  a+0.01 / a-0.01 -> shift ref
+    if (arg[0] == '+' || arg[0] == '-') alpha2_ref += atof(arg);
+    else alpha2_ref = atof(arg);
     Serial.print("alpha2_ref = "); Serial.println(alpha2_ref, 6);
   }
-  else if (c == 'd') {                  // d1 / d-1 -> set sign2; d -> flip it
-    char *arg = cmd + 1;
-    if (arg[0] == 0) {
-      sign2 = -sign2;
-    } else {
-      int v = atoi(arg);
-      if (v > 0) sign2 = 1;
-      else if (v < 0) sign2 = -1;
-      else { Serial.println("Use d1, d-1, or d to flip"); return; }
-    }
-    Serial.print("sign2 = "); Serial.println(sign2);
+  else if (c == 'i') {                 // i0 -> stop auto-ramp, i3 -> ramp 3 counts per 5 s
+    increment = atoi(arg);
+    Serial.print("Auto increment = "); Serial.println(increment);
   }
-  else if (c == 'f') {                  // f2000 -> DAC offset (counts)
-    offset = applyValue(offset, cmd + 1);
-    Serial.print("offset = "); Serial.println(offset, 1);
-  }
-  else if (c == 'r') {                  // reset controller to the midpoint
-    laser2_control_signal = Range / 2.0;
-    laser2_error_signal_prev = 0;
-    dac_output = (int)clampDACValue(offset);
-    analogWrite(pin_output2, dac_output);
-    Serial.println("Controller reset to midpoint");
-  }
-  else if (c == 'p') {                  // print status
-    Serial.print("running = "); Serial.print(running);
-    Serial.print("  output = "); Serial.print(dac_output);
+  else if (c == 'p') {                 // print status
+    Serial.print("output = "); Serial.print(output);
     Serial.print("  alpha2_ref = "); Serial.print(alpha2_ref, 6);
-    Serial.print("  Kp = "); Serial.print(laser2_K_p, 6);
-    Serial.print("  Ki = "); Serial.print(laser2_K_i, 6);
-    Serial.print("  sign2 = "); Serial.print(sign2);
-    Serial.print("  offset = "); Serial.print(offset, 1);
-    Serial.print("  control = "); Serial.println(laser2_control_signal, 2);
-  }
-  else {
-    Serial.println("Unknown command");
+    Serial.print("  increment = "); Serial.println(increment);
   }
 }
 
@@ -139,25 +72,29 @@ void setup() {
   Serial.begin(115200);
   analogWriteResolution(12);
   analogReadResolution(12);
+  pinMode(pin_output, OUTPUT);
   pinMode(dpin_in, INPUT_PULLUP);
   pinMode(dpin_out, INPUT);
 
-  laser2_control_signal = Range / 2.0;           // start at the midpoint
-  dac_output = (int)clampDACValue(offset);       // remove these two lines if you
-  analogWrite(pin_output2, dac_output);          // don't want DAC output at power-up
+  output = constrain(output, low, high);
+  analogWrite(pin_output, output);
 
-  Serial.println("Commands: s start, q stop, kpX Kp, kiX Ki, aX alpha ref, d1/d-1/d sign, fX offset, r reset, p status");
-  Serial.println("X may be absolute (kp0.7) or a shift (kp+0.1)");
+  Serial.println("Commands: s start, q stop, +N/-N shift output, oN set output, a0.5 set ref, a+0.01 shift ref, iN auto-step, p status");
 }
 
-void readSerial() {
-  static char buf[24];
+void loop() {
+  static unsigned long lastStepMs = 0;
+  static bool firstPass = true;
+
+    static char buf[24];
   static uint8_t n = 0;
   while (Serial.available()) {
     char ch = Serial.read();
     if (ch == '\n' || ch == '\r') {
       if (n > 0) {
         buf[n] = 0;
+        char c0 = tolower(buf[0]);
+        if (c0 == 's') firstPass = true;   // keep the original restart behavior
         handleCommand(buf);
         n = 0;
       }
@@ -165,12 +102,31 @@ void readSerial() {
       buf[n++] = ch;
     }
   }
-}
 
-void loop() {
-  readSerial();
+  if (!running) {
+    return;
+  }
 
-  if (!running) return;
+  if (firstPass) {
+    firstPass = false;
+    lastStepMs = millis();
+  }
+
+  if (millis() - lastStepMs >= 5000UL) {
+    output += increment;
+    if (output > high) {
+      output = high;
+    }
+    if (output < low){
+      output = low;
+    }
+    lastStepMs = millis();
+    Serial.print("New output = ");
+    Serial.println(output);
+  }
+
+  int writeValue = constrain(output, low, high);
+  analogWrite(pin_output, writeValue);
 
   bool manual_now = (digitalRead(dpin_in) == LOW);
   bool trigger_now = (digitalRead(dpin_out) == LOW);
@@ -197,7 +153,7 @@ void loop() {
   }
 
   int sample = 0;
-
+  double error = 9999.0;
   if (millis() - tstartsweep > period) {
     if (counter == 0) Serial.println("Missing peak: reference peak 1");
     else if (counter == 1) Serial.println("Missing peak: slave peak");
@@ -208,7 +164,6 @@ void loop() {
   } else {
     sample = analogRead(pin_input1);
 
-    // Reference peak 1
     if (counter == 0 && sample > High_threshold1) {
       time_peak = micros();
       int i = 0;
@@ -221,7 +176,6 @@ void loop() {
       counter++;
     }
 
-    // Slave peak (first of the two)
     else if (counter == 1 && sample > High_threshold2) {
       time_peak = micros();
       unsigned long current_offset = time_peak - start_time;
@@ -241,7 +195,6 @@ void loop() {
       }
     }
 
-    // Second slave peak (just skipped over)
     else if (counter == 2 && sample > High_threshold2) {
       int i = 0;
       do {
@@ -251,7 +204,6 @@ void loop() {
       counter++;
     }
 
-    // Reference peak 2
     else if (counter == 3 && sample > High_threshold1) {
       time_peak = micros();
       int i = 0;
@@ -266,49 +218,38 @@ void loop() {
     }
   }
 
-  // End of sweep (complete or failed): compute error, update controller, report
+  if (!sweep_active && t01 != 0 && t2 != 0 && t02 != 0 && t2 > t01 && t2 < t02) {
+    double alpha2 = (double)(t2 - t01) / (double)(t02 - t01);
+    error = alpha2_ref - alpha2;
+  }
+
   if (!sweep_active) {
-    double lockError = 9999.0;
-
-    if (t01 != 0 && t2 != 0 && t02 != 0 && t2 > t01 && t2 < t02) {
-      error2 = (double)t2 - t01;
-      totalT = (double)t02 - t01;
-      alpha2 = error2 / totalT;
-      lockError = alpha2_ref - alpha2;
-      laser2_error_signal_current = lockError;
-
-      float delta_laser2 = (laser2_K_p * (laser2_error_signal_current - laser2_error_signal_prev)) +
-                           (laser2_K_i * laser2_error_signal_current);
-      laser2_control_signal += (sign2 * delta_laser2);
-      if (laser2_control_signal > Range) laser2_control_signal = (float)Range;
-      if (laser2_control_signal < 0.0f) laser2_control_signal = 0.0f;
-
-      error = offset + laser2_control_signal - (Range / 2.0);
-      dac_output = (int)clampDACValue(error);
-      analogWrite(pin_output2, dac_output);
-
-      laser2_error_signal_prev = laser2_error_signal_current;
+    Serial.print("output = ");
+    Serial.print(writeValue);
+    Serial.print("  alpha2 = ");
+    if (t02 > t01) {
+      Serial.print((double)(t2 - t01) / (double)(t02 - t01), 6);
+    } else {
+      Serial.print("N/A");
     }
-
-    reportSweep(lockError);
+    Serial.print("  Lock Error: ");
+    Serial.println(error, 6);
   }
 
   prev_trigger_state = trigger_now;
 }
 
-// Savitzky-Golay Peak Finder
 unsigned long peakfinder(int number, unsigned long duration) {
   if (number < 13) return 0;
   unsigned long dt = duration / number;
   int prev_d = 0;
 
   for (int j = 6; j < (number - 7); j++) {
-    int current_d = int(6 * signalarray[j+6] + 5 * signalarray[j+5] + 4 * signalarray[j+4] +
-                        3 * signalarray[j+3] + 2 * signalarray[j+2] + signalarray[j+1] -
-                        signalarray[j-1] - 2 * signalarray[j-2] - 3 * signalarray[j-3] -
-                        4 * signalarray[j-4] - 5 * signalarray[j-5] - 6 * signalarray[j-6]);
-
-    if (current_d <= 0 && j > 6) {
+    int current_d = int(6 * signalarray[j + 6] + 5 * signalarray[j + 5] + 4 * signalarray[j + 4] +
+                         3 * signalarray[j + 3] + 2 * signalarray[j + 2] + signalarray[j + 1] -
+                         signalarray[j - 1] - 2 * signalarray[j - 2] - 3 * signalarray[j - 3] -
+                         4 * signalarray[j - 4] - 5 * signalarray[j - 5] - 6 * signalarray[j - 6]);
+    if (current_d <= 0 && prev_d > 0) {
       return (unsigned long)((j + (double)current_d / (prev_d - current_d)) * dt);
     }
     prev_d = current_d;
