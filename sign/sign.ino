@@ -1,6 +1,6 @@
 // --- Configuration and Thresholds ---
 #define High_threshold1 1100    // Reference laser (Big Peaks)
-#define Low_threshold1 1000
+#define Low_threshold1 630
 #define High_threshold2 650     // Slave laser (Small Peaks)
 #define Low_threshold2 630
 
