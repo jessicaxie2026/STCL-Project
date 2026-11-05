@@ -1,11 +1,11 @@
 // --- Configuration and Thresholds ---
 // Reference laser (adjusted for lower amplitude peaks)
 #define High_threshold1 1100
-#define Low_threshold1 1000
+#define Low_threshold1 630
 
 // Slave laser (adjusted for lower amplitude peaks)
 #define High_threshold2 650
-#define Low_threshold2 550
+#define Low_threshold2 600
 
 #define pin_input1 A4
 #define dpin_in 8       // Manual lock switch

@@ -1,8 +1,8 @@
 // --- Configuration and Thresholds ---
 #define High_threshold1 1100
-#define Low_threshold1 650
+#define Low_threshold1 630
 #define High_threshold2 650
-#define Low_threshold2 630
+#define Low_threshold2 600
 
 #define pin_input1 A4
 #define pin_output DAC0

@@ -9,10 +9,10 @@
 #define arraysize 1000
 
 // Thresholds and References
-#define REF_START_THRESHOLD 1250
-#define REF_END_THRESHOLD 950
-#define SLAVE_START_THRESHOLD 800
-#define SLAVE_END_THRESHOLD 750
+#define REF_START_THRESHOLD 1100
+#define REF_END_THRESHOLD 630
+#define SLAVE_START_THRESHOLD 650
+#define SLAVE_END_THRESHOLD 600
 #define alpha1_ref 0.6
 #define alpha2_ref 0.02
 
