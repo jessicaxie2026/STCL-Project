@@ -5,7 +5,7 @@
 #define Low_threshold2 630
 
 #define pin_input1 A4
-#define arraysize 1000
+#define arraysize 150
 #define dpin_in 8               // Manual switch
 #define dpin_out 11             // Trigger input
 #define pin_output2 DAC0
@@ -64,7 +64,8 @@ void reportSweep(double lockError) {
   } else {
     Serial.print("N/A");
   }
-  Serial.print(", ");
+  Serial.print("  Lock Error: ");
+  Serial.println(lockError, 6);
 
   Serial.print(t01); Serial.print(", ");
   Serial.print(t2); Serial.print(", ");
@@ -273,6 +274,7 @@ void loop() {
           i++;
         } while (sample > Low_threshold2 && i < arraysize);
         t2 = current_offset + peakfinder(i, micros() - time_peak);
+        Serial.print("slave1 n="); Serial.println(i);   // DIAGNOSTIC: samples in slave peak 1 capture
         counter++;
       } else {
         Serial.println("Missing peak: slave peak");
@@ -303,7 +305,12 @@ void loop() {
         i++;
       } while (sample > Low_threshold1 && i < arraysize);
 
-      if (mx >= max1 ) {          // at least 70% of reference peak 1's height
+      // DIAGNOSTIC: every candidate for reference peak 2, accepted or not
+      Serial.print("R2 candidate: t="); Serial.print(time_peak - start_time);
+      Serial.print(" mx="); Serial.print(mx);
+      Serial.print(" max1="); Serial.println(max1);
+
+      if (mx >= (max1 * 7) / 10) {          // at least 70% of reference peak 1's height
         t02 = time_peak - start_time + peakfinder(i, micros() - time_peak);
         sweep_active = false;
         counter++;
