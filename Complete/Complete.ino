@@ -27,7 +27,7 @@ bool running = false;           // start stopped; send 's' to run
 bool pid_active = true;         // false = PID stopped, DAC holds, error still reported
 
 // Runtime-adjustable parameters
-double alpha2_ref = 0.02;
+double alpha2_ref = 0.32823;
 float laser2_K_p = 3;
 float laser2_K_i = 4;
 int sign2 = 1;
