@@ -55,16 +55,13 @@ void syncControlToDAC() {
 }
 
 // Per-sweep report (same format and logic as Code 2): output, alpha2, lock error
+// Per-sweep report: output, timestamp, peak times, lock error
 void reportSweep(double lockError) {
   Serial.print("output = ");
   Serial.print(dac_output);
-  Serial.print("  alpha2 = ");
-  if (t02 > t01) {
-    Serial.print((double)(t2 - t01) / (double)(t02 - t01), 6);
-  } else {
-    Serial.print("N/A");
-  }
-Serial.print(", ");
+  Serial.print(", time_ms = ");
+  Serial.print(tstartsweep - lock_start_ms);   // ms from 's' to this sweep's trigger
+  Serial.print(", ");
 
   Serial.print(t01); Serial.print(", ");
   Serial.print(t2); Serial.print(", ");
