@@ -12,6 +12,7 @@
 
 // --- Global Variables ---
 unsigned long t01, t02, t2, start_time, tstartsweep, time_peak;
+unsigned long lock_start_ms = 0;   // millis() when 's' was sent; timestamps count from here
 unsigned long period = 100;
 int signalarray[arraysize];
 int counter;
@@ -54,7 +55,6 @@ void syncControlToDAC() {
   laser2_error_signal_prev = 0;
 }
 
-// Per-sweep report (same format and logic as Code 2): output, alpha2, lock error
 // Per-sweep report: output, timestamp, peak times, lock error
 void reportSweep(double lockError) {
   Serial.print("output = ");
@@ -84,6 +84,7 @@ void handleCommand(char *cmd) {
     counter = 0;
     pid_active = true;
     running = true;
+    lock_start_ms = millis();           // timestamps restart from zero
     Serial.println("Lock started");
   }
   else if (c == 'q') {                  // stop everything (DAC holds last value, no error output)
